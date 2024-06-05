@@ -6362,6 +6362,11 @@ static void mtk_cam_seninf_irq_event_st_init(struct seninf_core *core)
 		vsync_detect_seninf_irq_event.msg_buffer = devm_kzalloc(core->dev,
 					vsync_detect_seninf_irq_event.fifo_size, GFP_ATOMIC);
 
+		if (!vsync_detect_seninf_irq_event.msg_buffer) {
+			dev_info(core->dev, "kcalloc memory faill %d", __LINE__);
+			vsync_detect_seninf_irq_event.msg_buffer = vmalloc(vsync_detect_seninf_irq_event.fifo_size);
+		}
+
 		if (unlikely(vsync_detect_seninf_irq_event.msg_buffer == NULL))
 			dev_info(core->dev,
 				"ERROR: irq msg_buffer:%p allocate memory failed, fifo_size:%u\n",

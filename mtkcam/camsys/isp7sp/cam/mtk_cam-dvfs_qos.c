@@ -78,6 +78,10 @@ int mtk_cam_dvfs_probe(struct device *dev,
 	dvfs->stream_infos = devm_kcalloc(dev, max_stream_num,
 					  sizeof(*dvfs->stream_infos),
 					  GFP_KERNEL);
+	if (!dvfs->stream_infos) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    dvfs->stream_infos = vmalloc(dvfs->max_stream_num*sizeof(*dvfs->stream_infos));
+	}
 	if (!dvfs->stream_infos)
 		return -ENOMEM;
 
@@ -358,6 +362,10 @@ int mtk_cam_qos_probe(struct device *dev,
 	qos->n_path = n;
 	qos->cam_path = devm_kcalloc(dev, qos->n_path,
 				     sizeof(*qos->cam_path), GFP_KERNEL);
+	if (!qos->cam_path) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    qos->cam_path = vmalloc(qos->n_path*sizeof(*qos->cam_path));
+	}
 	if (!qos->cam_path)
 		return -ENOMEM;
 

@@ -2366,6 +2366,12 @@ static int mtk_hcp_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "- E. hcp driver probe.\n");
 	hcp_dev = devm_kzalloc(&pdev->dev, sizeof(*hcp_dev), GFP_KERNEL);
+
+	if (!hcp_dev) {
+		dev_info(&pdev->dev, "kcalloc memory faill %d", __LINE__);
+		hcp_dev = vmalloc(sizeof(*hcp_dev));
+	}
+
 	if (hcp_dev == NULL)
 		return -ENOMEM;
 

@@ -345,6 +345,12 @@ static int mtk_imgsys_cmdq_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "- E. imgsys cmdq driver probe\n");
 
 	cmdq_dev = devm_kzalloc(&pdev->dev, sizeof(struct mtk_imgcmdq_dev), GFP_KERNEL);
+
+	if (!cmdq_dev) {
+		dev_info(&pdev->dev, "kcalloc memory faill %d", __LINE__);
+		cmdq_dev = vmalloc(sizeof(struct mtk_imgcmdq_dev));
+	}
+
 	if (cmdq_dev == NULL)
 		return -ENOMEM;
 

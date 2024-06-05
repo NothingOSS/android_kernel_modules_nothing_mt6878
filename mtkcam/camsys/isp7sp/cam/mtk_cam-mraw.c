@@ -1568,6 +1568,10 @@ static int mtk_mraw_of_probe(struct platform_device *pdev,
 	if (mraw_dev->num_clks) {
 		mraw_dev->clks = devm_kcalloc(dev, mraw_dev->num_clks, sizeof(*mraw_dev->clks),
 					 GFP_KERNEL);
+		if (!mraw_dev->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    mraw_dev->clks = vmalloc(mraw_dev->num_clks*sizeof(*mraw_dev->clks));
+		}
 		if (!mraw_dev->clks)
 			return -ENOMEM;
 	}
@@ -1680,6 +1684,12 @@ static int mtk_mraw_probe(struct platform_device *pdev)
 	int ret;
 
 	mraw_dev = devm_kzalloc(dev, sizeof(*mraw_dev), GFP_KERNEL);
+
+	if (!mraw_dev){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		mraw_dev = vmalloc(sizeof(*mraw_dev));	
+	}
+
 	if (!mraw_dev)
 		return -ENOMEM;
 
@@ -1697,6 +1707,12 @@ static int mtk_mraw_probe(struct platform_device *pdev)
 	mraw_dev->fifo_size =
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
 	mraw_dev->msg_buffer = devm_kzalloc(dev, mraw_dev->fifo_size, GFP_KERNEL);
+
+	if (!mraw_dev->msg_buffer){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		mraw_dev->msg_buffer = vmalloc(mraw_dev->fifo_size);	
+	}
+
 	if (!mraw_dev->msg_buffer) {
 		ret = -ENOMEM;
 		goto UNREGISTER_PM_NOTIFIER;

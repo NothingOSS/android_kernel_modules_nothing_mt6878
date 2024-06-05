@@ -180,6 +180,12 @@ static int mtk_ipesys_me_probe(struct platform_device *pdev)
 
 	pr_info("mtk ipesys me probe start\n");
 	me_dev = devm_kzalloc(&pdev->dev, sizeof(struct ipesys_me_device) * 1, GFP_KERNEL);
+
+	if (!me_dev) {
+		dev_info(&pdev->dev, "kcalloc memory faill %d", __LINE__);
+		me_dev = vmalloc(sizeof(struct ipesys_me_device) * 1);
+	}
+
 	if (!me_dev)
 		return -ENOMEM;
 

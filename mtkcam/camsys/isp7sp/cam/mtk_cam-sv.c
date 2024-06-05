@@ -2072,6 +2072,10 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 	if (sv_dev->num_clks) {
 		sv_dev->clks = devm_kcalloc(dev, sv_dev->num_clks, sizeof(*sv_dev->clks),
 					 GFP_KERNEL);
+		if (!sv_dev->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    sv_dev->clks = vmalloc(sv_dev->num_clks*sizeof(*sv_dev->clks));
+		}
 		if (!sv_dev->clks)
 			return -ENOMEM;
 	}
@@ -2227,6 +2231,12 @@ static int mtk_camsv_probe(struct platform_device *pdev)
 	int sv_two_smi_en = 0, sv_support_two_smi_out = 0;
 
 	sv_dev = devm_kzalloc(dev, sizeof(*sv_dev), GFP_KERNEL);
+
+	if (!sv_dev){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		sv_dev = vmalloc(sizeof(*sv_dev));	
+	}
+
 	if (!sv_dev)
 		return -ENOMEM;
 
@@ -2254,6 +2264,12 @@ static int mtk_camsv_probe(struct platform_device *pdev)
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
 	sv_dev->msg_buffer = devm_kzalloc(dev, sv_dev->fifo_size,
 					     GFP_KERNEL);
+
+	if (!sv_dev->msg_buffer){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		sv_dev->msg_buffer = vmalloc(sv_dev->fifo_size);	
+	}
+
 	if (!sv_dev->msg_buffer) {
 		ret = -ENOMEM;
 		goto UNREGISTER_PM_NOTIFIER;

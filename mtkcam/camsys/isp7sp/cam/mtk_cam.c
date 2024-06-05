@@ -3479,6 +3479,12 @@ static int mtk_cam_alloc_for_engine(struct device *dev)
 		+ eng->num_larb_devices;
 
 	dev_arr = devm_kzalloc(dev, sizeof(*dev) * num, GFP_KERNEL);
+
+	if (!dev_arr){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		dev_arr = vmalloc(sizeof(*dev) * num);	
+	}
+
 	if (!dev_arr)
 		return -ENOMEM;
 
@@ -4108,6 +4114,12 @@ SKIP_ADLRD_IRQ:
 	cam_dev->max_stream_num = 8; /* TODO: how */
 	cam_dev->ctxs = devm_kcalloc(dev, cam_dev->max_stream_num,
 				     sizeof(*cam_dev->ctxs), GFP_KERNEL);
+
+	if (!cam_dev->ctxs) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		cam_dev->ctxs = vmalloc(cam_dev->max_stream_num*sizeof(*cam_dev->ctxs));
+	}
+	
 	if (!cam_dev->ctxs) {
 		dev_err(dev, "%s: kcalloc cam_dev->ctxs failed\n", __func__);
 		WRAP_AEE_EXCEPTION("mtk_cam_probe", "Kcalloc");

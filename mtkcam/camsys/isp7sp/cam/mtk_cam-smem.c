@@ -232,6 +232,12 @@ static struct device *mtk_cam_alloc_smem_dev(struct device *dev,
 	int ret;
 
 	child = devm_kzalloc(dev, sizeof(*child), GFP_KERNEL);
+
+	if (!child) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		child = vmalloc(sizeof(*child));
+	}
+
 	if (!child)
 		return NULL;
 

@@ -4333,8 +4333,10 @@ kalSecurityFrameClassifier(struct GLUE_INFO *prGlueInfo,
 				GLUE_GET_PKT_BSS_IDX(prPacket),
 				aucLookAheadBuf);
 
-		if (prStaRec && prStaRec->fgTransmitKeyExist &&
-				prStaRec->fgIsEapEncrypt) {
+		if (((prStaRec && prStaRec->fgTransmitKeyExist &&
+				prStaRec->fgIsEapEncrypt) ||
+				(prStaRec && prStaRec->fgIsTxAllowed)) &&
+				(ucEAPoLKey != ETH_EAPOL_KEY)) {
 			/* Encrypt EAP frames if AIS connected and with a key */
 			DBGLOG(TX, INFO, "Encrypt EAP packets\n");
 		} else {

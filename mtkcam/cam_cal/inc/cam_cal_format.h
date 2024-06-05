@@ -188,7 +188,7 @@ struct STRUCT_CAM_CAL_PDAF_STRUCT {
 struct STRUCT_CAM_CAL_DATA_STRUCT {
 	enum ENUM_CAMERA_CAM_CAL_TYPE_ENUM Command;
 	enum ENUM_CAM_CAL_DATA_VER_ENUM DataVer;
-	unsigned char PartNumber[24];
+	unsigned char PartNumber[48];
 	unsigned int  sensorID;
 	unsigned int  deviceID;
 	struct STRUCT_CAM_CAL_SINGLE_LSC_STRUCT   SingleLsc;
@@ -207,7 +207,7 @@ struct STRUCT_CAM_CAL_MODULE_VERSION_STRUCT {
 };
 
 struct STRUCT_CAM_CAL_PART_NUM_STRUCT {
-	unsigned char PartNumber[24];
+	unsigned char PartNumber[48];
 };
 
 struct STRUCT_CAM_CAL_LSC_DATA_STRUCT {

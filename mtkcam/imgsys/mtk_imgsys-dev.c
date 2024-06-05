@@ -68,6 +68,12 @@ int mtk_imgsys_pipe_init(struct mtk_imgsys_dev *imgsys_dev,
 	nodes_num = pipe->desc->total_queues;
 	nodes_size = sizeof(*pipe->nodes) * nodes_num;
 	pipe->nodes = devm_kzalloc(imgsys_dev->dev, nodes_size, GFP_KERNEL);
+
+	if (!pipe->nodes) {
+		dev_info(imgsys_dev->dev, "kcalloc memory faill %d", __LINE__);
+		pipe->nodes = vmalloc(nodes_size);
+	}
+
 	if (!pipe->nodes)
 		return -ENOMEM;
 

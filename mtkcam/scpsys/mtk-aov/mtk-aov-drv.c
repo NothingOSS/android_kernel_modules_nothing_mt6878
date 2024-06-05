@@ -325,6 +325,12 @@ static int mtk_aov_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%s probe aov driver+\n", __func__);
 
 	aov_dev = devm_kzalloc(&pdev->dev, sizeof(*aov_dev), GFP_KERNEL);
+
+	if (!aov_dev) {
+		dev_info(&pdev->dev, "kcalloc memory faill %d", __LINE__);
+		aov_dev = vmalloc(sizeof(*aov_dev));
+	}
+
 	if (aov_dev == NULL)
 		return -ENOMEM;
 

@@ -152,8 +152,6 @@ u32 g_sensor_margin(struct adaptor_ctx *ctx, unsigned int scenario)
 	struct mtk_stagger_info info = {0};
 	u32 len = 0;
 	u32 mode_exp_cnt = 1;
-	const struct subdrv_mode_struct *mode_st = NULL;
-
 	// para.u64[0] = ctx->cur_mode->id;
 	para.u64[0] = scenario;
 	para.u64[1] = 0;
@@ -162,38 +160,19 @@ u32 g_sensor_margin(struct adaptor_ctx *ctx, unsigned int scenario)
 		    SENSOR_FEATURE_GET_FRAME_CTRL_INFO_BY_SCENARIO,
 		    para.u8, &len);
 	info.scenario_id = SENSOR_SCENARIO_ID_NONE;
-
 	/* get the mode's const pointer of the scenario_id */
-	mode_st = &ctx->subctx.s_ctx.mode[scenario];
 
-	switch (mode_st->hdr_mode) {
-	case HDR_RAW_STAGGER:
-		// if (!g_stagger_info(ctx, ctx->cur_mode->id, &info))
-		if (!g_stagger_info(ctx, scenario, &info))
-			mode_exp_cnt = info.count;
+	// if (!g_stagger_info(ctx, ctx->cur_mode->id, &info))
+	if (!g_stagger_info(ctx, scenario, &info))
+		mode_exp_cnt = info.count;
 
-		/* no vc info case, it is 1 exposure */
-		if (mode_exp_cnt == 0)
-			mode_exp_cnt = 1;
+	/* no vc info case, it is 1 exposure */
+	if (mode_exp_cnt == 0)
+		mode_exp_cnt = 1;
 
-		// XXX: para.u64[2] is single line and single exp based
-		// convert to multi line and multi exp based
-		return (para.u64[2] * mode_exp_cnt * mode_exp_cnt);
-	case HDR_RAW_LBMF:
-		// if (!g_stagger_info(ctx, ctx->cur_mode->id, &info))
-		if (!g_stagger_info(ctx, scenario, &info))
-			mode_exp_cnt = info.count;
-
-		/* no vc info case, it is 1 exposure */
-		if (mode_exp_cnt == 0)
-			mode_exp_cnt = 1;
-
-		// XXX: para.u64[2] is single line and single exp based
-		// convert to single line and multi exp based
-		return (para.u64[2] * mode_exp_cnt);
-	default:
-		return para.u64[2];
-	}
+	// XXX: para.u64[2] is single line and single exp based
+	// convert to multi line and multi exp based
+	return para.u64[2];
 }
 
 int g_sensor_fine_integ_line(struct adaptor_ctx *ctx,

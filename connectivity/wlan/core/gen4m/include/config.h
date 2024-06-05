@@ -2071,7 +2071,7 @@
  *       COUNTRY_CHANNEL_TXPOWER_LIMIT_TYPE_COMP_11AC_V2
  *------------------------------------------------------------------------------
  */
-#define CFG_SUPPORT_DYNA_TX_PWR_CTRL_11AC_V2_SETTING 0
+#define CFG_SUPPORT_DYNA_TX_PWR_CTRL_11AC_V2_SETTING 1
 
 /*------------------------------------------------------------------------------
  * Dynamic tx power control:
@@ -2257,7 +2257,7 @@
 #ifdef CFG_STA_2G_BW
 #define DEFAULT_STA_2G_BW (CFG_STA_2G_BW)
 #else
-#define DEFAULT_STA_2G_BW (MAX_BW_20MHZ)
+#define DEFAULT_STA_2G_BW (MAX_BW_40MHZ)
 #endif
 
 #ifdef CFG_STA_5G_BW

@@ -408,6 +408,12 @@ static int ccd_probe(struct platform_device *pdev)
 		alloc_dev->dma_parms =
 			devm_kzalloc(alloc_dev,
 				sizeof(*alloc_dev->dma_parms), GFP_KERNEL);
+
+		if (!alloc_dev->dma_parms) {
+			dev_info(alloc_dev, "kcalloc memory faill %d", __LINE__);
+			alloc_dev->dma_parms = vmalloc(sizeof(*alloc_dev->dma_parms));
+		}
+
 		if (!alloc_dev->dma_parms)
 			return -ENOMEM;
 	}

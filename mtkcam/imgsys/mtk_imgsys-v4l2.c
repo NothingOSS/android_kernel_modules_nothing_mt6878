@@ -2922,6 +2922,10 @@ int mtk_imgsys_pipe_v4l2_register(struct mtk_imgsys_pipe *pipe,
 					 sizeof(*pipe->subdev_pads),
 					 GFP_KERNEL);
 	if (!pipe->subdev_pads) {
+		    dev_info(pipe->imgsys_dev->dev, "kcalloc memory faill %d", __LINE__);
+		    pipe->subdev_pads = vmalloc(pipe->desc->total_queues*sizeof(*pipe->subdev_pads));
+		}
+	if (!pipe->subdev_pads) {
 		dev_info(pipe->imgsys_dev->dev,
 			"failed to alloc pipe->subdev_pads (%d)\n", ret);
 		ret = -ENOMEM;
@@ -3346,6 +3350,12 @@ int mtk_imgsys_probe(struct platform_device *pdev)
 	int ret;
 
 	imgsys_dev = devm_kzalloc(&pdev->dev, sizeof(*imgsys_dev), GFP_KERNEL);
+
+	if (!imgsys_dev) {
+		dev_info(&pdev->dev, "kcalloc memory faill %d", __LINE__);
+		imgsys_dev = vmalloc(sizeof(*imgsys_dev));
+	}
+
 	if (!imgsys_dev)
 		return -ENOMEM;
 
@@ -3403,6 +3413,12 @@ int mtk_imgsys_probe(struct platform_device *pdev)
 		pdev->dev.dma_parms =
 			devm_kzalloc(imgsys_dev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
 	}
+
+	if (!pdev->dev.dma_parms) {
+		dev_info(imgsys_dev->dev, "kcalloc memory faill %d", __LINE__);
+		pdev->dev.dma_parms = vmalloc(sizeof(*pdev->dev.dma_parms));
+	}
+
 	if (pdev->dev.dma_parms) {
 		ret = dma_set_max_seg_size(imgsys_dev->dev, (unsigned int)DMA_BIT_MASK(34));
 		if (ret)
@@ -3466,6 +3482,12 @@ int mtk_imgsys_probe(struct platform_device *pdev)
 	}
 
 	larb_devs = devm_kzalloc(&pdev->dev, sizeof(larb_devs) * larbs_num, GFP_KERNEL);
+
+	if (!larb_devs){
+		dev_info(&pdev->dev, "kcalloc memory faill %d", __LINE__);
+		larb_devs = vmalloc(sizeof(larb_devs) * larbs_num);	
+	}
+
 	if (!larb_devs)
 		return -ENOMEM;
 
