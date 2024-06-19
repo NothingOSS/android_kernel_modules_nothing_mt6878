@@ -199,7 +199,7 @@ u32 g_sensor_dcg_property(struct adaptor_ctx *ctx, const int scenario_id)
 	const struct subdrv_mode_struct *mode_st = NULL;
 
 	if (unlikely(scenario_id >= ctx->subctx.s_ctx.sensor_mode_num)) {
-		adaptor_logi(ctx,
+		adaptor_logd(ctx,
 			"invalid scenario_id:%u, sensor_mode_num:%u\n",
 			scenario_id, ctx->subctx.s_ctx.sensor_mode_num);
 		return 0;
@@ -220,7 +220,7 @@ u32 g_sensor_lbmf_property(struct adaptor_ctx *ctx, const int scenario_id,
 	const struct subdrv_mode_struct *mode_st = NULL;
 
 	if (unlikely(scenario_id >= ctx->subctx.s_ctx.sensor_mode_num)) {
-		adaptor_logi(ctx,
+		adaptor_logd(ctx,
 			"invalid scenario_id:%u, sensor_mode_num:%u\n",
 			scenario_id, ctx->subctx.s_ctx.sensor_mode_num);
 		return 0;
