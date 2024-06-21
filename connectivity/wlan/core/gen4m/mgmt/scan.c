@@ -3341,8 +3341,6 @@ struct BSS_DESC *scanAddToBssDesc(struct ADAPTER *prAdapter,
 				}
 			}
 
-			if (prBssDesc->fgIsVHTPresent == FALSE)
-				scanCheckEpigramVhtIE(pucIE, prBssDesc);
 #if CFG_SUPPORT_PASSPOINT
 			/* since OSEN is mutual exclusion with RSN, so
 			 * we reuse RSN here
@@ -5021,61 +5019,6 @@ void scanResetBssDesc(struct ADAPTER *prAdapter,
 		prBssDesc,
 		TRUE);
 }	/* end of scanResetBssDesc() */
-
-/*----------------------------------------------------------------------------*/
-/*!
- * @brief Check if VHT IE exists in Vendor Epigram IE.
- *
- * @param[in] pucBuf     Pointer to the Vendor IE.
- * @param[in] prBssDesc  Pointer to the BSS_DESC structure.
- *
- * @return (none)
- */
-/*----------------------------------------------------------------------------*/
-void scanCheckEpigramVhtIE(uint8_t *pucBuf, struct BSS_DESC *prBssDesc)
-{
-	uint32_t u4EpigramOui;
-	uint16_t u2EpigramVendorType;
-	struct IE_VENDOR_EPIGRAM_IE *prEpiIE;
-	uint8_t *pucIE;
-	uint16_t u2IELength;
-	uint16_t u2Offset = 0;
-
-	if (pucBuf == NULL) {
-		DBGLOG(RLM, WARN, "[Epigram] pucBuf is NULL, skip!\n");
-		return;
-	}
-	if (prBssDesc == NULL) {
-		DBGLOG(RLM, WARN, "[Epigram] prBssDesc is NULL, skip!\n");
-		return;
-	}
-
-	prEpiIE = (struct IE_VENDOR_EPIGRAM_IE *) pucBuf;
-	u2IELength = prEpiIE->ucLength -
-		(uint16_t) OFFSET_OF(struct IE_VENDOR_EPIGRAM_IE, pucData[0]);
-	WLAN_GET_FIELD_BE24(prEpiIE->aucOui, &u4EpigramOui);
-	WLAN_GET_FIELD_BE16(prEpiIE->aucVendorType, &u2EpigramVendorType);
-	if (u4EpigramOui != VENDOR_IE_EPIGRAM_OUI)
-		return;
-	if (u2EpigramVendorType != VENDOR_IE_EPIGRAM_VHTTYPE1 &&
-	    u2EpigramVendorType != VENDOR_IE_EPIGRAM_VHTTYPE2 &&
-	    u2EpigramVendorType != VENDOR_IE_EPIGRAM_VHTTYPE3)
-		return;
-
-	pucIE = prEpiIE->pucData;
-	IE_FOR_EACH(pucIE, u2IELength, u2Offset) {
-		switch (IE_ID(pucIE)) {
-		case ELEM_ID_VHT_CAP:
-			scanParseVHTCapIE(pucIE, prBssDesc);
-			break;
-		case ELEM_ID_VHT_OP:
-			scanParseVHTOpIE(pucIE, prBssDesc);
-			break;
-		default:
-			break;
-		}
-	}
-}
 
 void scanParseVHTCapIE(uint8_t *pucIE, struct BSS_DESC *prBssDesc)
 {

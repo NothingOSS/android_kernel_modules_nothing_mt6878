@@ -2180,12 +2180,6 @@ enum ENUM_MTK_OUI_CHIP_CAP {
 
 #define VENDOR_IE_TYPE_MBO                          0x506f9a16
 
-/* Epigram IE */
-#define VENDOR_IE_EPIGRAM_OUI                      0x00904c
-#define VENDOR_IE_EPIGRAM_VHTTYPE1                  0x0400
-#define VENDOR_IE_EPIGRAM_VHTTYPE2                  0x0408
-#define VENDOR_IE_EPIGRAM_VHTTYPE3                  0x0418
-
 /* Cisco IE */
 #define VENDOR_IE_CISCO_OUI                        0x004096
 #define VENDOR_IE_CISCO_TYPE                       0x2C
