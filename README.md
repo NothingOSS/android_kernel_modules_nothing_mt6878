@@ -5,3 +5,6 @@
 2. OS 2.6(Tetris-U2.6-240702-2200)
   - Improve camera
 
+3. OS 2.6(Tetris-U2.6-240729-1047)
+  - Update camera
+
