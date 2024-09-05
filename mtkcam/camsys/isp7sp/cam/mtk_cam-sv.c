@@ -364,8 +364,18 @@ void sv_reset_by_camsys_top(struct mtk_camsv_device *sv_dev)
 {
 	int cq_dma_sw_ctl;
 	int ret;
+	unsigned int smi_common_id;
+	bool reset_enable = false;
+
+	CALL_PLAT_V4L2(
+		get_sv_smi_reset_setting, &smi_common_id, &reset_enable);
 
 	dev_info(sv_dev->dev, "%s camsv_id:%d\n", __func__, sv_dev->id);
+
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock +\n", __func__);
+	if (reset_enable)
+		mtk_smi_set_common_clamp_and_lock(smi_common_id, true);
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock -\n", __func__);
 
 	writel(0, sv_dev->base_scq + REG_CAMSVCQTOP_SW_RST_CTL);
 	writel(1, sv_dev->base_scq + REG_CAMSVCQTOP_SW_RST_CTL);
@@ -392,6 +402,11 @@ void sv_reset_by_camsys_top(struct mtk_camsv_device *sv_dev)
 	writel(0, sv_dev->cam->base + REG_CAM_MAIN_SW_RST_1);
 	wmb(); /* make sure committed */
 
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock +\n", __func__);
+	if (reset_enable)
+		mtk_smi_set_common_clamp_and_lock(smi_common_id, false);
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock -\n", __func__);
+
 RESET_FAILURE:
 	return;
 }
@@ -400,9 +415,17 @@ void sv_reset(struct mtk_camsv_device *sv_dev)
 {
 	int dma_sw_ctl, cq_dma_sw_ctl;
 	int ret;
+	unsigned int smi_common_id;
+	bool reset_enable = false;
 
-	dev_dbg(sv_dev->dev, "%s camsv_id:%d\n", __func__, sv_dev->id);
+	CALL_PLAT_V4L2(
+		get_sv_smi_reset_setting, &smi_common_id, &reset_enable);
+	dev_info(sv_dev->dev, "%s camsv_id:%d\n", __func__, sv_dev->id);
 
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock +\n", __func__);
+	if (reset_enable)
+		mtk_smi_set_common_clamp_and_lock(smi_common_id, true);
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock -\n", __func__);
 	writel(0, sv_dev->base_dma + REG_CAMSVDMATOP_SW_RST_CTL);
 	writel(1, sv_dev->base_dma + REG_CAMSVDMATOP_SW_RST_CTL);
 	wmb(); /* make sure committed */
@@ -466,7 +489,10 @@ void sv_reset(struct mtk_camsv_device *sv_dev)
 		CAMSVCQ_CQ_EN, CAMSVCQ_CQ_RESET, 0);
 
 	wmb(); /* make sure committed */
-
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock +\n", __func__);
+	if (reset_enable)
+		mtk_smi_set_common_clamp_and_lock(smi_common_id, false);
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock -\n", __func__);
 RESET_FAILURE:
 	return;
 }
