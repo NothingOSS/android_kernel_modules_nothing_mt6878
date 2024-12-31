@@ -232,18 +232,20 @@ static void get_dispatch_gain(struct adaptor_ctx *ctx, u32 tgain, u32 *again, u3
 	u32 ana_gain_table_size = ctx->subctx.s_ctx.ana_gain_table_size;
 	u32 ana_gain_table_cnt = 0;
 
-	if (dig_gain_step && ana_gain_table && (tgain > ana_gain_table[0])) {
-		ana_gain_table_cnt = (ana_gain_table_size / sizeof(ana_gain_table[0]));
-		for (i = 1; i < ana_gain_table_cnt; i++) {
-			if (ana_gain_table[i] > tgain) {
+	if (ana_gain_table_size > 0) {
+		if (dig_gain_step && ana_gain_table && (tgain > ana_gain_table[0])) {
+
+			for (i = 1; i < ana_gain_table_cnt; i++) {
+				if (ana_gain_table[i] > tgain) {
+					ag = ana_gain_table[i - 1];
+					dg = (u32) ((u64)tgain * BASE_DGAIN / ag);
+					break;
+				}
+			}
+			if (i == ana_gain_table_cnt) {
 				ag = ana_gain_table[i - 1];
 				dg = (u32) ((u64)tgain * BASE_DGAIN / ag);
-				break;
 			}
-		}
-		if (i == ana_gain_table_cnt) {
-			ag = ana_gain_table[i - 1];
-			dg = (u32) ((u64)tgain * BASE_DGAIN / ag);
 		}
 	}
 
