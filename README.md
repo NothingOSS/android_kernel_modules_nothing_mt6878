@@ -8,7 +8,9 @@
 3. OS 2.6(Tetris-U2.6-240729-1047)
   - Update camera
 
-3. OS 2.6(Tetris-U2.6-240813-2046)
+4. OS 2.6(Tetris-U2.6-240813-2046)
   - Update Wifi
   - Update camera
 
+5. OS 2.6(Tetris-U2.6-240910-1735)
+  - No update
