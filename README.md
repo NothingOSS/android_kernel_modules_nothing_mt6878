@@ -17,3 +17,6 @@
 
 6. OS 2.6(Tetris-U2.6-241021-2030)
   - Fix camera issue
+
+7. OS 2.6(Tetris-U2.6-241204-2338)
+  - Improve wifi
