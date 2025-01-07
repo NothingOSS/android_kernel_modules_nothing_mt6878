@@ -14,3 +14,6 @@
 
 5. OS 2.6(Tetris-U2.6-240910-1735)
   - No update
+
+6. OS 2.6(Tetris-U2.6-241021-2030)
+  - Fix camera issue
