@@ -2008,7 +2008,8 @@ failure_recovery:
  * @level_high: The higher bound for the levels for which the PGD allocs are required
  * @new_pgds:   Ptr to an array (size MIDGARD_MMU_BOTTOMLEVEL+1) to write the
  *              newly allocated PGD addresses to.
- *
+ * @pool_grown: True if new PGDs required the memory pool to grow to allocate more pages,
+ *              or false otherwise
  * Numerically, level_low < level_high, not to be confused with top level and
  * bottom level concepts for MMU PGDs. They are only used as low and high bounds
  * in an incrementing for-loop.
@@ -2018,14 +2019,17 @@ failure_recovery:
  * * -ENOMEM - allocation failed for a PGD.
  */
 static int mmu_insert_alloc_pgds(struct kbase_device *kbdev, struct kbase_mmu_table *mmut,
-				 phys_addr_t *new_pgds, int level_low, int level_high)
+				 phys_addr_t *new_pgds, int level_low, int level_high,                                                                                                                                                                                                                              bool *pool_grown)
 {
 	int err = 0;
 	int i;
 
 	lockdep_assert_held(&mmut->mmu_lock);
 
+	*pool_grown = false;
 	for (i = level_low; i <= level_high; i++) {
+		if (new_pgds[i] != KBASE_MMU_INVALID_PGD_ADDRESS)
+			continue;
 		do {
 			new_pgds[i] = kbase_mmu_alloc_pgd(kbdev, mmut);
 			if (new_pgds[i] != KBASE_MMU_INVALID_PGD_ADDRESS)
@@ -2039,16 +2043,10 @@ static int mmu_insert_alloc_pgds(struct kbase_device *kbdev, struct kbase_mmu_ta
 				dev_err(kbdev->dev, "%s: kbase_mem_pool_grow() returned error %d",
 					__func__, err);
 
-				/* Free all PGDs allocated in previous successful iterations
-				 * from (i-1) to level_low
-				 */
-				for (i = (i - 1); i >= level_low; i--) {
-					if (new_pgds[i] != KBASE_MMU_INVALID_PGD_ADDRESS)
-						kbase_mmu_free_pgd(kbdev, mmut, new_pgds[i]);
-				}
 
 				return err;
 			}
+			*pool_grown = true;
 		} while (1);
 	}
 
@@ -2076,6 +2074,8 @@ static int kbase_mmu_insert_single_page(struct kbase_context *kctx, u64 start_vp
 
 	if (WARN_ON(kctx == NULL))
 		return -EINVAL;
+
+	lockdep_assert_held(&kctx->reg_lock);
 
 	/* 64-bit address range is the max */
 	KBASE_DEBUG_ASSERT(start_vpfn <= (U64_MAX / PAGE_SIZE));
@@ -2108,6 +2108,7 @@ static int kbase_mmu_insert_single_page(struct kbase_context *kctx, u64 start_vp
 		struct page *p;
 		register unsigned int num_of_valid_entries;
 		bool newly_created_pgd = false;
+                bool pool_grown;
 
 		if (count > remain)
 			count = remain;
@@ -2115,6 +2116,9 @@ static int kbase_mmu_insert_single_page(struct kbase_context *kctx, u64 start_vp
 		cur_level = MIDGARD_MMU_BOTTOMLEVEL;
 		insert_level = cur_level;
 
+		for (l = MIDGARD_MMU_TOPLEVEL + 1; l <= cur_level; l++)
+			new_pgds[l] = KBASE_MMU_INVALID_PGD_ADDRESS;
+repeat_page_table_walk:
 		/*
 		 * Repeatedly calling mmu_get_lowest_valid_pgd() is clearly
 		 * suboptimal. We don't have to re-parse the whole tree
@@ -2129,7 +2133,7 @@ static int kbase_mmu_insert_single_page(struct kbase_context *kctx, u64 start_vp
 		if (err) {
 			dev_err(kbdev->dev, "%s: mmu_get_lowest_valid_pgd() returned error %d",
 				__func__, err);
-			goto fail_unlock;
+			goto fail_unlock_free_pgds;
 		}
 
 		/* No valid pgd at cur_level */
@@ -2138,9 +2142,12 @@ static int kbase_mmu_insert_single_page(struct kbase_context *kctx, u64 start_vp
 			 * down to the lowest valid pgd at insert_level
 			 */
 			err = mmu_insert_alloc_pgds(kbdev, mmut, new_pgds, (insert_level + 1),
-						    cur_level);
+						    cur_level, &pool_grown);
 			if (err)
-				goto fail_unlock;
+				goto fail_unlock_free_pgds;
+
+			if (pool_grown)
+				goto repeat_page_table_walk;
 
 			newly_created_pgd = true;
 
@@ -2223,9 +2230,10 @@ static int kbase_mmu_insert_single_page(struct kbase_context *kctx, u64 start_vp
 fail_unlock_free_pgds:
 	/* Free the pgds allocated by us from insert_level+1 to bottom level */
 	for (l = cur_level; l > insert_level; l--)
-		kbase_mmu_free_pgd(kbdev, mmut, new_pgds[l]);
+		if (new_pgds[l] != KBASE_MMU_INVALID_PGD_ADDRESS)
+			kbase_mmu_free_pgd(kbdev, mmut, new_pgds[l]);
 
-fail_unlock:
+
 	if (insert_vpfn != start_vpfn) {
 		/* Invalidate the pages we have partially completed */
 		mmu_insert_pages_failure_recovery(kbdev, mmut, start_vpfn, insert_vpfn, &dirty_pgds,
@@ -2372,6 +2380,9 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 	int l, cur_level, insert_level;
 	struct tagged_addr *start_phys = phys;
 
+	if (mmut->kctx)
+		lockdep_assert_held(&mmut->kctx->reg_lock);
+
 	/* Note that 0 is a valid start_vpfn */
 	/* 64-bit address range is the max */
 	KBASE_DEBUG_ASSERT(start_vpfn <= (U64_MAX / PAGE_SIZE));
@@ -2391,6 +2402,7 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 		register unsigned int num_of_valid_entries;
 		bool newly_created_pgd = false;
 		enum kbase_mmu_op_type flush_op;
+                bool pool_grown;
 
 		if (count > remain)
 			count = remain;
@@ -2410,6 +2422,10 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 
 		insert_level = cur_level;
 
+		for (l = MIDGARD_MMU_TOPLEVEL + 1; l <= cur_level; l++)
+			new_pgds[l] = KBASE_MMU_INVALID_PGD_ADDRESS;
+
+repeat_page_table_walk:
 		/*
 		 * Repeatedly calling mmu_get_lowest_valid_pgd() is clearly
 		 * suboptimal. We don't have to re-parse the whole tree
@@ -2424,7 +2440,7 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 		if (err) {
 			dev_err(kbdev->dev, "%s: mmu_get_lowest_valid_pgd() returned error %d",
 				__func__, err);
-			goto fail_unlock;
+			goto fail_unlock_free_pgds;
 		}
 
 		/* No valid pgd at cur_level */
@@ -2433,9 +2449,12 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 			 * down to the lowest valid pgd at insert_level
 			 */
 			err = mmu_insert_alloc_pgds(kbdev, mmut, new_pgds, (insert_level + 1),
-						    cur_level);
+						    cur_level, &pool_grown);
 			if (err)
-				goto fail_unlock;
+				goto fail_unlock_free_pgds;
+
+			if (pool_grown)
+				goto repeat_page_table_walk;
 
 			newly_created_pgd = true;
 
@@ -2540,9 +2559,10 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 fail_unlock_free_pgds:
 	/* Free the pgds allocated by us from insert_level+1 to bottom level */
 	for (l = cur_level; l > insert_level; l--)
-		kbase_mmu_free_pgd(kbdev, mmut, new_pgds[l]);
+		if (new_pgds[l] != KBASE_MMU_INVALID_PGD_ADDRESS)
+			kbase_mmu_free_pgd(kbdev, mmut, new_pgds[l]);
 
-fail_unlock:
+
 	if (insert_vpfn != start_vpfn) {
 		/* Invalidate the pages we have partially completed */
 		mmu_insert_pages_failure_recovery(kbdev, mmut, start_vpfn, insert_vpfn, dirty_pgds,
@@ -3619,24 +3639,30 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 
 	/* Unlock MMU region.
 	 *
-	 * Notice that GPUs which don't issue flush commands via GPU control
-	 * still need an additional GPU cache flush here, this time only
-	 * for the page table, because the function call above to sync PGDs
-	 * won't have any effect on them.
+	 * For GPUs without FLUSH_PA_RANGE support, the GPU caches were completely
+	 * cleaned and invalidated after locking the virtual address range affected
+	 * by the migration. As long as the lock is in place, GPU access to the
+	 * locked range would remain blocked. So there is no need to clean and
+	 * invalidate the GPU caches again after the copying the page contents
+	 * of old page and updating the page table entry to point to new page.
+	 *
+	 * For GPUs with FLUSH_PA_RANGE support, the contents of old page would
+	 * have been evicted from the GPU caches after locking the virtual address
+	 * range. The page table entry contents also would have been invalidated
+	 * from the GPU's L2 cache by kbase_mmu_sync_pgd() after the page table
+	 * update.
+	 *
+	 * If kbase_mmu_hw_do_unlock_no_addr() fails, GPU reset will be triggered which
+	 * would remove the MMU lock and so there is no need to rollback page migration
+	 * and the failure can be ignored.
 	 */
 	spin_lock_irqsave(&kbdev->hwaccess_lock, hwaccess_flags);
 	if (kbdev->pm.backend.gpu_ready && mmut->kctx->as_nr >= 0) {
 		int as_nr = mmut->kctx->as_nr;
 		struct kbase_as *as = &kbdev->as[as_nr];
+		int local_ret = kbase_mmu_hw_do_unlock_no_addr(kbdev, as, &op_param);
 
-		if (mmu_flush_cache_on_gpu_ctrl(kbdev)) {
-			ret = kbase_mmu_hw_do_unlock(kbdev, as, &op_param);
-		} else {
-			ret = kbase_gpu_cache_flush_and_busy_wait(kbdev,
-								  GPU_COMMAND_CACHE_CLN_INV_L2);
-			if (!ret)
-				ret = kbase_mmu_hw_do_unlock_no_addr(kbdev, as, &op_param);
-		}
+		CSTD_UNUSED(local_ret);
 	}
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, hwaccess_flags);
 	/* Releasing locks before checking the migration transaction error state */
@@ -3647,22 +3673,27 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 	mmu_page_migration_transaction_end(kbdev);
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, hwaccess_flags);
 
-	/* Checking the final migration transaction error state */
-	if (ret < 0) {
-		dev_err(kbdev->dev, "%s: failed to unlock MMU region.", __func__);
-		goto undo_mappings;
-	}
-
 	/* Undertaking metadata transfer, while we are holding the mmu_lock */
 	spin_lock(&page_md->migrate_lock);
 	if (level == MIDGARD_MMU_BOTTOMLEVEL) {
-		size_t page_array_index =
-			page_md->data.mapped.vpfn - page_md->data.mapped.reg->start_pfn;
+		enum kbase_page_status page_status = PAGE_STATUS_GET(page_md->status);
 
-		WARN_ON(PAGE_STATUS_GET(page_md->status) != ALLOCATED_MAPPED);
+		if (page_status == ALLOCATED_MAPPED) {
+			/* Replace page in array of pages of the physical allocation. */
+			size_t page_array_index =
+				div_u64(page_md->data.mapped.vpfn, GPU_PAGES_PER_CPU_PAGE) -
+				page_md->data.mapped.reg->start_pfn;
 
-		/* Replace page in array of pages of the physical allocation. */
-		page_md->data.mapped.reg->gpu_alloc->pages[page_array_index] = new_phys;
+			page_md->data.mapped.reg->gpu_alloc->pages[page_array_index] = new_phys;
+		} else if (page_status == NOT_MOVABLE) {
+			dev_dbg(kbdev->dev,
+				"%s: migration completed and page has become NOT_MOVABLE.",
+				__func__);
+		} else {
+			dev_WARN(kbdev->dev,
+				 "%s: migration completed but page has moved to status %d.",
+				 __func__, page_status);
+		}
 	}
 	/* Update the new page dma_addr with the transferred metadata from the old_page */
 	page_md->dma_addr = new_dma_addr;

@@ -86,12 +86,6 @@ static u_int8_t kalDevRegReadStatic(struct GLUE_INFO *prGlueInfo,
 	uint32_t u4Register, uint32_t *pu4Value);
 static u_int8_t kalDevRegWriteStatic(struct GLUE_INFO *prGlueInfo,
 	uint32_t u4Register, uint32_t u4Value);
-#if IS_ENABLED(CFG_MTK_WIFI_CONNV3_SUPPORT)
-static u_int8_t kalDevRegReadViaBT(struct GLUE_INFO *prGlueInfo,
-				uint32_t u4Register, uint32_t *pu4Value);
-static u_int8_t kalDevRegWriteViaBT(struct GLUE_INFO *prGlueInfo,
-				uint32_t u4Register, uint32_t u4Value);
-#endif
 /*******************************************************************************
  *                              F U N C T I O N S
  *******************************************************************************
@@ -624,7 +618,7 @@ static u_int8_t kalIsHostReg(struct mt66xx_chip_info *prChipInfo,
 }
 
 #if IS_ENABLED(CFG_MTK_WIFI_CONNV3_SUPPORT)
-static u_int8_t kalDevRegReadViaBT(struct GLUE_INFO *prGlueInfo,
+u_int8_t kalDevRegReadViaBT(struct GLUE_INFO *prGlueInfo,
 	uint32_t u4Register, uint32_t *pu4Value)
 {
 	struct mt66xx_chip_info *prChipInfo = NULL;
@@ -746,7 +740,7 @@ static u_int8_t kalDevRegReadViaBT(struct GLUE_INFO *prGlueInfo,
 	return FALSE;
 }
 
-static u_int8_t kalDevRegWriteViaBT(struct GLUE_INFO *prGlueInfo,
+u_int8_t kalDevRegWriteViaBT(struct GLUE_INFO *prGlueInfo,
 	uint32_t u4Register, uint32_t u4Value)
 {
 	struct mt66xx_chip_info *prChipInfo = NULL;
@@ -890,8 +884,9 @@ static u_int8_t kalDevRegReadStatic(struct GLUE_INFO *prGlueInfo,
 		if (is_wifi_coredump_processing())
 			return FALSE;
 		else if (fgTriggerDebugSop && kalIsResetting()) {
-			return kalDevRegReadViaBT(prGlueInfo,
-				u4Register, pu4Value);
+			if (!prChipInfo->fgDumpViaBtOnlyForDbgSOP)
+				return kalDevRegReadViaBT(prGlueInfo,
+					u4Register, pu4Value);
 		}
 #endif
 		return FALSE;
@@ -954,8 +949,9 @@ u_int8_t kalDevRegRead(struct GLUE_INFO *prGlueInfo,
 		if (is_wifi_coredump_processing())
 			return FALSE;
 		else if (fgTriggerDebugSop && kalIsResetting()) {
-			return kalDevRegReadViaBT(prGlueInfo,
-				u4Register, pu4Value);
+			if (!prChipInfo->fgDumpViaBtOnlyForDbgSOP)
+				return kalDevRegReadViaBT(prGlueInfo,
+					u4Register, pu4Value);
 		}
 #endif
 		return FALSE;
@@ -1020,8 +1016,9 @@ static u_int8_t kalDevRegWriteStatic(struct GLUE_INFO *prGlueInfo,
 		if (is_wifi_coredump_processing())
 			return FALSE;
 		else if (fgTriggerDebugSop && kalIsResetting()) {
-			return kalDevRegWriteViaBT(prGlueInfo,
-				u4Register, u4Value);
+			if (!prChipInfo->fgDumpViaBtOnlyForDbgSOP)
+				return kalDevRegWriteViaBT(prGlueInfo,
+					u4Register, u4Value);
 		}
 #endif
 		return FALSE;
@@ -1106,8 +1103,9 @@ u_int8_t kalDevRegWrite(struct GLUE_INFO *prGlueInfo,
 		if (is_wifi_coredump_processing())
 			return FALSE;
 		else if (fgTriggerDebugSop && kalIsResetting()) {
-			return kalDevRegWriteViaBT(prGlueInfo,
-				u4Register, u4Value);
+			if (!prChipInfo->fgDumpViaBtOnlyForDbgSOP)
+				return kalDevRegWriteViaBT(prGlueInfo,
+					u4Register, u4Value);
 		}
 #endif
 		return FALSE;
@@ -2106,7 +2104,7 @@ end:
 #endif /* !CFG_SUPPORT_RX_WORK */
 
 #if (CFG_SUPPORT_TX_DATA_DELAY == 1)
-	del_timer_sync(&prHifInfo->rTxDelayTimer);
+	hrtimer_cancel(&prHifInfo->rTxDelayTimer);
 	KAL_CLR_BIT(HIF_TX_DATA_DELAY_TIMER_RUNNING_BIT,
 		    prHifInfo->ulTxDataTimeout);
 #endif

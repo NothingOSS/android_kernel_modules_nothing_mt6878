@@ -1774,7 +1774,7 @@ static int mtkdip_ioc_add_kva(struct v4l2_subdev *subdev, void *arg)
 		buf_va_info->buf_fd = fd_info->fds[i];
 		dmabuf = dma_buf_get(fd_info->fds[i]);
 
-		if (IS_ERR(dmabuf)) {
+		if (IS_ERR_OR_NULL(dmabuf)) {
 			dev_info(imgsys_pipe->imgsys_dev->dev, "%s:err fd %d",
 						__func__, fd_info->fds[i]);
 			vfree(buf_va_info);
@@ -1785,8 +1785,11 @@ static int mtkdip_ioc_add_kva(struct v4l2_subdev *subdev, void *arg)
 
 		dma_buf_begin_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
 		ret = dma_buf_vmap(dmabuf, &map);
-		if (ret)
-			pr_info("%s, map kernel va failed\n", __func__);
+		if (ret) {
+			pr_info("%s, map kernel va failed(%d)\n", __func__, ret);
+			dma_buf_put(dmabuf);
+			return -ENOMEM;
+		}
 		buf_va_info->kva = (u64)map.vaddr;
 		buf_va_info->map = map;
 		buf_va_info->dma_buf_putkva = dmabuf;
@@ -1872,11 +1875,13 @@ static int mtkdip_ioc_del_kva(struct v4l2_subdev *subdev, void *arg)
 		mutex_unlock(&(kva_list->mymutex));
 
 		dmabuf = buf_va_info->dma_buf_putkva;
-		dma_buf_vunmap(dmabuf, &buf_va_info->map);
-		dma_buf_end_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
+		if (!IS_ERR_OR_NULL(&buf_va_info->map.vaddr)) {
+			dma_buf_vunmap(dmabuf, &buf_va_info->map);
+			dma_buf_end_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
 
-		dma_buf_unmap_attachment(buf_va_info->attach, buf_va_info->sgt,
-			DMA_BIDIRECTIONAL);
+			dma_buf_unmap_attachment(buf_va_info->attach, buf_va_info->sgt,
+				DMA_BIDIRECTIONAL);
+		}
 		dma_buf_detach(dmabuf, buf_va_info->attach);
 		fd_info->fds_size[i] = dmabuf->size;
 		dma_buf_put(dmabuf);

@@ -1367,32 +1367,20 @@ int wlanParseAkmSuites(uint32_t *au4AkmSuites, uint32_t u4AkmSuitesCount,
 			default:
 				break;
 			}
-		} else if (u4WpaVersion == IW_AUTH_WPA_VERSION_WPA) {
+		} else if (u4WpaVersion == IW_AUTH_WPA_VERSION_WPA ||
+			u4WpaVersion == IW_AUTH_WPA_VERSION_WPA2) {
 			switch (au4AkmSuites[i]) {
 			case WLAN_AKM_SUITE_8021X:
-				u4AkmSuite = WPA_AKM_SUITE_802_1X;
+				if (u4WpaVersion == IW_AUTH_WPA_VERSION_WPA)
+					u4AkmSuite = WPA_AKM_SUITE_802_1X;
+				else
+					u4AkmSuite = RSN_AKM_SUITE_802_1X;
 				break;
 			case WLAN_AKM_SUITE_PSK:
-				u4AkmSuite = WPA_AKM_SUITE_PSK;
-				break;
-			case WLAN_AKM_SUITE_8021X_SHA256:
-				u4AkmSuite = RSN_AKM_SUITE_802_1X_SHA256;
-				break;
-			case WLAN_AKM_SUITE_PSK_SHA256:
-				u4AkmSuite = RSN_AKM_SUITE_PSK_SHA256;
-				break;
-			default:
-				DBGLOG(REQ, WARN, "invalid Akm Suite (%08x)\n",
-				       au4AkmSuites[i]);
-				return -EINVAL;
-			}
-		} else if (u4WpaVersion == IW_AUTH_WPA_VERSION_WPA2) {
-			switch (au4AkmSuites[i]) {
-			case WLAN_AKM_SUITE_8021X:
-				u4AkmSuite = RSN_AKM_SUITE_802_1X;
-				break;
-			case WLAN_AKM_SUITE_PSK:
-				u4AkmSuite = RSN_AKM_SUITE_PSK;
+				if (u4WpaVersion == IW_AUTH_WPA_VERSION_WPA)
+					u4AkmSuite = WPA_AKM_SUITE_PSK;
+				else
+					u4AkmSuite = RSN_AKM_SUITE_PSK;
 				break;
 #if CFG_SUPPORT_802_11R
 			case WLAN_AKM_SUITE_FT_8021X:
@@ -1505,7 +1493,7 @@ int mtk_cfg80211_connect(struct wiphy *wiphy,
 	uint32_t rStatus;
 	uint32_t u4BufLen;
 	enum ENUM_WEP_STATUS eEncStatus;
-	enum ENUM_PARAM_AUTH_MODE eAuthMode;
+	enum ENUM_PARAM_AUTH_MODE eAuthMode = AUTH_MODE_OPEN;
 	uint32_t cipher;
 	struct PARAM_CONNECT rNewSsid;
 	struct PARAM_OP_MODE rOpMode;
@@ -2462,6 +2450,11 @@ int mtk_cfg80211_set_rekey_data(struct wiphy *wiphy,
 #endif
 
 	prGtkData->ucBssIndex = ucBssIndex;
+#if (CFG_REKEY_OFFLOAD == 0)
+	prGtkData->ucRekeyMode = GTK_REKEY_CMD_MODE_OFLOAD_OFF;
+#else
+	prGtkData->ucRekeyMode = GTK_REKEY_CMD_MODE_OFFLOAD_ON;
+#endif
 
 	prWpaInfo = aisGetWpaInfo(prGlueInfo->prAdapter,
 		ucBssIndex);
@@ -5855,10 +5848,7 @@ int32_t mtk_cfg80211_process_str_cmd(struct wiphy *wiphy,
 {
 	uint32_t rStatus = WLAN_STATUS_SUCCESS;
 	uint8_t *cmd = data;
-	struct GLUE_INFO *prGlueInfo = NULL;
 	STR_CMD_FUNCTION pfHandler = NULL;
-
-	WIPHY_PRIV(wiphy, prGlueInfo);
 
 	if (data == NULL || len == 0) {
 		DBGLOG(INIT, TRACE, "%s data or len is invalid\n", __func__);
@@ -5866,6 +5856,10 @@ int32_t mtk_cfg80211_process_str_cmd(struct wiphy *wiphy,
 	}
 
 	DBGLOG(REQ, INFO, "cmd: %s, len: %d\n", cmd, len);
+	if (kalIsResetOnEnd() == TRUE) {
+		DBGLOG(INIT, WARN, "WiFi is resetting\n");
+		return -EBUSY;
+	}
 
 	pfHandler = get_str_cmd_handler(cmd, len);
 	if (pfHandler != NULL) {
@@ -6754,6 +6748,9 @@ int mtk_cfg80211_del_iface(struct wiphy *wiphy, struct wireless_dev *wdev)
 	/* make sure netdev is disconnected */
 	DBGLOG(REQ, INFO, "ucBssIndex = %d\n", ucBssIndex);
 	if (!kalIsResetting()) {
+		/* Clear pending request (AIS). */
+		aisFsmFlushRequest(prAdapter, ucBssIndex);
+
 		rStatus = kalIoctlByBssIdx(prGlueInfo, wlanoidSetDisassociate,
 				&u4DisconnectReason, sizeof(u4DisconnectReason),
 				&u4SetInfoLen, ucBssIndex);

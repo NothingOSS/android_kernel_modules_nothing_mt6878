@@ -13,7 +13,7 @@
 struct state_transition {
 	int dst_state;
 	int on_event;
-	int (*guard)(struct state_accessor *s_acc, struct transition_param *p);
+	int (*cam_guard)(struct state_accessor *s_acc, struct transition_param *p);
 	int action;
 };
 

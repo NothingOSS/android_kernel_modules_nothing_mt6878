@@ -153,7 +153,7 @@ void wlanGetEpaElnaFromNvram(
 	uint32_t *pu4DataLen)
 {
 #define MAX_NVRAM_READY_COUNT 10
-#define MAX_NVRAM_FEM_MAX 512
+#define MAX_NVRAM_FEM_MAX 1024
 
 	/* ePA /eLNA */
 	uint8_t u1TypeID, u1LenLSB, u1LenMSB;

@@ -257,17 +257,19 @@ static int gps2scp_open(struct inode *inode, struct file *file)
 {
 	int conap_status;
 
-	conap_status = conap_scp_is_drv_ready(DRV_TYPE_GPS);
-	if (conap_status != 0) {
+	conap_status = conap_scp_is_ready();
+	if (conap_status == 1) {
 		gps2scp_cb.conap_scp_msg_notify_cb = gps2scp_msg_cb;
 		gps2scp_cb.conap_scp_state_notify_cb = gps2scp_state_notify_cb;
-		conap_scp_register_drv(DRV_TYPE_GPS, &gps2scp_cb);
-	}
-	conap_status = conap_scp_is_drv_ready(DRV_TYPE_GPS);
-	if (conap_status == 0)
+		if (conap_scp_register_drv(DRV_TYPE_GPS, &gps2scp_cb) < 0) {
+			pr_info("conap gps register fail! Try Again!\n");
+			return -EAGAIN;
+		}
 		pr_info("conap ready! conap_status = %d\n", conap_status);
-	else
+	} else {
 		pr_info("conap not ready! conap_status = %d\n", conap_status);
+		return -EAGAIN;
+	}
 
 	pr_info("%s: gps2scp open major %d minor %d (pid %d)\n", __func__, imajor(inode), iminor(inode), current->pid);
 	return 0;

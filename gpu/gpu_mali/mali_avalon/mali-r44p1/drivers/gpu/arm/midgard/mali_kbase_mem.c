@@ -3530,10 +3530,12 @@ out_term:
 }
 KBASE_EXPORT_TEST_API(kbase_alloc_phy_pages);
 
-void kbase_set_phy_alloc_page_status(struct kbase_mem_phy_alloc *alloc,
+void kbase_set_phy_alloc_page_status(struct kbase_context *kctx, struct kbase_mem_phy_alloc *alloc,
 				     enum kbase_page_status status)
 {
 	u32 i = 0;
+
+	lockdep_assert_held(&kctx->reg_lock);
 
 	for (; i < alloc->nents; i++) {
 		struct tagged_addr phys = alloc->pages[i];
@@ -4806,7 +4808,8 @@ struct kbase_va_region *kbase_jit_allocate(struct kbase_context *kctx,
 			if (kbase_is_page_migration_enabled()) {
 				kbase_gpu_vm_lock(kctx);
 				mutex_lock(&kctx->jit_evict_lock);
-				kbase_set_phy_alloc_page_status(reg->gpu_alloc, ALLOCATED_MAPPED);
+				kbase_set_phy_alloc_page_status(kctx, reg->gpu_alloc,
+								ALLOCATED_MAPPED);
 				mutex_unlock(&kctx->jit_evict_lock);
 				kbase_gpu_vm_unlock(kctx);
 			}
@@ -4959,9 +4962,18 @@ void kbase_jit_free(struct kbase_context *kctx, struct kbase_va_region *reg)
 	kbase_mem_evictable_mark_reclaim(reg->gpu_alloc);
 
 	kbase_gpu_vm_lock(kctx);
+
 	reg->flags |= KBASE_REG_DONT_NEED;
 	reg->flags &= ~KBASE_REG_ACTIVE_JIT_ALLOC;
 	kbase_mem_shrink_cpu_mapping(kctx, reg, 0, reg->gpu_alloc->nents);
+
+	/* Inactive JIT regions should be freed by the shrinker and not impacted
+	 * by page migration. Once freed, they will enter into the page migration
+	 * state machine via the mempools.
+	 */
+	if (kbase_is_page_migration_enabled())
+		kbase_set_phy_alloc_page_status(kctx, reg->gpu_alloc, NOT_MOVABLE);
+
 	kbase_gpu_vm_unlock(kctx);
 
 	/*
@@ -4977,13 +4989,6 @@ void kbase_jit_free(struct kbase_context *kctx, struct kbase_va_region *reg)
 
 	list_move(&reg->jit_node, &kctx->jit_pool_head);
 
-	/* Inactive JIT regions should be freed by the shrinker and not impacted
-	 * by page migration. Once freed, they will enter into the page migration
-	 * state machine via the mempools.
-	 */
-	if (kbase_is_page_migration_enabled())
-		kbase_set_phy_alloc_page_status(reg->gpu_alloc, NOT_MOVABLE);
-	
 #if IS_ENABLED(CONFIG_MALI_MTK_JIT_RECLAIM_ANTITHRASHING)
 	reg->last_used_ts = ktime_get_raw_ns();
 #endif /* CONFIG_MALI_MTK_JIT_RECLAIM_ANTITHRASHING */

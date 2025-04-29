@@ -1536,10 +1536,10 @@ uint32_t rlmDomainExtractSingleSkuInfoFromFirmware(
 u_int8_t regd_is_single_sku_en(void);
 u_int8_t rlmDomainIsLegalChannel(struct ADAPTER *prAdapter,
 				 enum ENUM_BAND eBand, uint8_t ucChannel);
-#if CFG_CH_SELECT_ENHANCEMENT
+
 u_int8_t rlmDomainIsIndoorChannel(struct ADAPTER *prAdapter,
 				 enum ENUM_BAND eBand, uint8_t ucChannel);
-#endif
+
 u_int8_t rlmDomainIsStaSapIndoorConn(struct ADAPTER *prAdapter);
 u_int8_t rlmDomainIsLegalDfsChannel(struct ADAPTER *prAdapter,
 		enum ENUM_BAND eBand, uint8_t ucChannel);

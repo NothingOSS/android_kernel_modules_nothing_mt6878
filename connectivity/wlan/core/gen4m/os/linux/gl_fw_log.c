@@ -202,7 +202,7 @@ uint32_t fw_log_notify_rcv(enum ENUM_FW_LOG_CTRL_TYPE type,
 			"[%d] connv3 driver buffer full.\n",
 			type);
 	else
-		DBGLOG(INIT, TRACE,
+		DBGLOG(INIT, LOUD,
 			"[%d] connv3_log_handler written=%d\n",
 			type,
 			written);

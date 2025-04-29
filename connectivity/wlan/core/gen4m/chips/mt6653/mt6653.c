@@ -2710,7 +2710,7 @@ static void mt6653ConfigPcieAspm(struct GLUE_INFO *prGlueInfo, u_int8_t fgEn)
 		HAL_MCR_WR(prGlueInfo->prAdapter,
 			   PCIE_MAC_IREG_PCIE_LOW_POWER_CTRL_0_ADDR,
 			   prHifInfo->u4PcieASPM);
-		DBGLOG(HAL, INFO, "Enable aspm L1.1/L1.2 0x%08x\n",
+		DBGLOG(HAL, LOUD, "Enable aspm L1.1/L1.2 0x%08x\n",
 			prHifInfo->u4PcieASPM);
 	} else {
 		/*
@@ -2733,7 +2733,7 @@ static void mt6653ConfigPcieAspm(struct GLUE_INFO *prGlueInfo, u_int8_t fgEn)
 		HAL_MCR_WR(prGlueInfo->prAdapter,
 			   PCIE_MAC_IREG_PCIE_LOW_POWER_CTRL_0_ADDR,
 			   u4Val);
-		DBGLOG(HAL, INFO, "Disable aspm L1.1/L1.2 0x%08x\n", u4Val);
+		DBGLOG(HAL, LOUD, "Disable aspm L1.1/L1.2 0x%08x\n", u4Val);
 	}
 }
 #endif

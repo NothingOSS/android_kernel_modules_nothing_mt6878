@@ -37,6 +37,7 @@
 #define _FPSGO_KO_H_
 
 int xgf_ko_init(void);
+int fpsgo_touch_latency_ko_init(void);
 int rl_closed_loop_ko_init(void);
 
 #endif

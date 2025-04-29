@@ -42,12 +42,6 @@
 #define ROAMING_RECOVER_RLM_SYNC		0
 #define ROAMING_RECOVER_BSS_UPDATE		1
 
-#if (CFG_TC10_FEATURE == 1)
-#define RCPI_FOR_DONT_ROAM                      80 /*-70dbm*/
-#else
-#define RCPI_FOR_DONT_ROAM                      60 /*-80dbm*/
-#endif
-
 /*******************************************************************************
  *                             D A T A   T Y P E S
  *******************************************************************************

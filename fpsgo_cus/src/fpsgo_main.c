@@ -54,6 +54,8 @@ static int __init fpsgo_init(void)
 	rl_closed_loop_ko_init();
 	pr_debug("%s %d: rl_closed_loop_ko_init", __func__, __LINE__);
 
+	fpsgo_touch_latency_ko_init();
+
 	ret = notify_xgf_ko_ready();
 	pr_debug("%s %d: notify_xgf_ko_ready %d", __func__, __LINE__, ret);
 	if (!ret)

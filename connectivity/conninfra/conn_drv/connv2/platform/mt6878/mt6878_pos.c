@@ -49,6 +49,7 @@ static unsigned long g_sw_sema_irq_flags = 0;
 
 #ifndef CONFIG_FPGA_EARLY_PORTING
 static const char *get_spi_sys_name(enum sys_spi_subsystem subsystem);
+static void consys_write_bt_rcal_mt6878(mapped_addr *psysram_efuse_list);
 #endif
 static int connsys_adie_clock_buffer_setting(unsigned int curr_status, unsigned int next_status);
 
@@ -292,6 +293,8 @@ int connsys_a_die_cfg_mt6878(unsigned int curr_status, unsigned int next_status)
 	update_thermal_data_mt6878(&input);
 
 	connsys_a_die_cfg_PART2_mt6878_gen(curr_status, next_status, hw_ver_id);
+
+	consys_write_bt_rcal_mt6878(sysram_efuse_list);
 
 	consys_sema_release_mt6878(CONN_SEMA_RFSPI_INDEX);
 
@@ -1040,3 +1043,35 @@ int consys_get_chip_info_mt6878(char *buf, unsigned int size)
 {
 	return consys_get_chip_info(buf, size, 1);
 }
+
+#ifndef CONFIG_FPGA_EARLY_PORTING
+static void consys_write_bt_rcal_mt6878(mapped_addr *sysram_efuse_list)
+{
+	unsigned int efuse_macro_0 = 0;
+	unsigned int efuse_macro_1 = 0;
+	unsigned int bt_rcal_r = 0;
+	unsigned int bt_rcal_w = 0;
+
+	if (consys_get_adie_chipid_mt6878() != ADIE_6637) {
+		/* Read efuse valid bit 0x11C[31]/0x124[31], if it's burned wrong. write default value */
+		efuse_macro_0 = CONSYS_REG_READ(sysram_efuse_list[0]);
+		efuse_macro_1 = CONSYS_REG_READ(sysram_efuse_list[2]);
+		pr_info("efuse_macro_0 = 0x%08x,efuse_macro_1 = 0x%08x", efuse_macro_0, efuse_macro_1);
+
+		if (((efuse_macro_0 >> 31) == 0) || ((efuse_macro_1 >> 31) == 1))
+			bt_rcal_w = 0xA8;
+		else
+			bt_rcal_w = ((efuse_macro_0 >> 27) & 0xF) | 0xA0;
+
+		/* turn on bt clk*/
+		consys_spi_write_nolock_mt6878(SYS_SPI_TOP, 0xA08, 0xFFFFFFFF);
+		/* write to 0x64 */
+		consys_spi_write_nolock_mt6878(SYS_SPI_BT, 0x064, bt_rcal_w);
+		consys_spi_read_nolock_mt6878(SYS_SPI_BT, 0x064, &bt_rcal_r);
+		/* turn off bt clk */
+		consys_spi_write_nolock_mt6878(SYS_SPI_TOP, 0xA08, 0x0);
+
+		pr_info("bt_rcal_w = 0x%08x,bt_rcal_r = 0x%08x", bt_rcal_w, bt_rcal_r);
+	}
+}
+#endif

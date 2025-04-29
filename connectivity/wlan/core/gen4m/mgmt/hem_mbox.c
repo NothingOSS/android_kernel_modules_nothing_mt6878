@@ -151,6 +151,9 @@ static uint8_t *apucDebugMsg[] = {
 #if (CFG_SUPPORT_802_11AX == 1)
 	(uint8_t *) DISP_STRING("MID_SMPS_ACTION_SET"),
 #endif
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+	(uint8_t *) DISP_STRING("MID_MNY_P2P_NOTIFY_APGO_STARTED"),
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
 };
 
 /*lint -restore */
@@ -335,6 +338,9 @@ static struct MSG_HNDL_ENTRY arMsgMapTable[] = {
 #endif /* ARP_MONITER_ENABLE */
 	{MID_RSN_FW_DUMP, rsnTriggerDumpWTBL},
 	{MID_RSN_MIC_FAIL, rsnMicErrorHandleMsg},
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+	{MID_MNY_P2P_NOTIFY_APGO_STARTED, p2pRoleFsmRunEventApGoStarted},
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
 };
 
 /*******************************************************************************

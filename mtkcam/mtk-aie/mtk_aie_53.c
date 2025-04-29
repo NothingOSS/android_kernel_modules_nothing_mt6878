@@ -1044,7 +1044,7 @@ int mtk_aie_vidioc_qbuf(struct file *file, void *priv,
 
 	AIE_SYSTRACE_BEGIN("%s", __func__);
 
-	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) { /*IMG & data*/
+	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE && fd->fd_stream_count != 0) { /*IMG & data*/
 		if (!fd->map_count) {
 
 			idx = buf->length - 3;

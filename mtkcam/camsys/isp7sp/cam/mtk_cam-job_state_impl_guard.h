@@ -224,6 +224,11 @@ static inline bool is_isp_ge_processing(int isp_state)
 	return isp_state >= S_ISP_PROCESSING;
 }
 
+static inline bool is_isp_aborted(int isp_state)
+{
+	return isp_state == S_ISP_ABORTED;
+}
+
 static inline bool current_sensor_ready(struct state_accessor *s_acc)
 {
 	int s_state = ops_call(s_acc, cur_sensor_state);

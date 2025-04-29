@@ -293,6 +293,13 @@ uint8_t p2pRoleFsmInit(struct ADAPTER *prAdapter,
 		p2pFuncRadarInfoInit();
 #endif
 
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+		cnmTimerInitTimer(prAdapter,
+				&(prP2pBssInfo->rP2pApGoCarrierOnTimer),
+				p2pRoleFsmCarrierOnTimeoutHandler,
+				(uintptr_t)prP2pBssInfo);
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
+
 		LINK_INITIALIZE(&prP2pBssInfo->rPmkidCache);
 
 #if (CFG_SUPPORT_802_11BE_MLO == 1)
@@ -400,6 +407,11 @@ void p2pRoleFsmUninit(struct ADAPTER *prAdapter, uint8_t ucRoleIdx)
 		/* ensure the timer be stopped */
 		cnmTimerStopTimer(prAdapter,
 			&(prP2pRoleFsmInfo->rP2pRoleFsmTimeoutTimer));
+
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+		cnmTimerStopTimer(prAdapter,
+				&(prP2pBssInfo->rP2pApGoCarrierOnTimer));
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
 
 		cnmTimerStopTimer(prAdapter,
 			&(prP2pRoleFsmInfo->rP2pCsaDoneTimer));
@@ -1599,6 +1611,14 @@ void p2pRoleFsmRunEventStartAP(struct ADAPTER *prAdapter,
 		prP2pBssInfo->u2BeaconInterval = DOT11_BEACON_PERIOD_DEFAULT;
 	}
 
+	if (prAdapter->rWifiVar.ucGoBcnIntrvl != 0) {
+		prP2pBssInfo->u2BeaconInterval =
+			prAdapter->rWifiVar.ucGoBcnIntrvl;
+		DBGLOG(P2P, TRACE,
+			"Updated u2BeaconInterval to :%u by customize.\n",
+			prP2pBssInfo->u2BeaconInterval);
+	}
+
 	if (prP2pStartAPMsg->u4DtimPeriod) {
 		DBGLOG(P2P, TRACE,
 			"DTIM interval updated to :%u\n",
@@ -2358,10 +2378,14 @@ void p2pRoleFsmRunEventRadarDet(struct ADAPTER *prAdapter,
 		if (IS_NET_PWR_STATE_ACTIVE(
 			prAdapter,
 			prP2pBssInfo->ucBssIndex)) {
-
+			prAdapter->rWifiVar.ucCsaDeauthClient =
+				FEATURE_DISABLED;
 			cnmSapChannelSwitchReq(prAdapter,
 				&prP2pConnReqInfo->rChannelInfo,
 				prP2pBssInfo->u4PrivateData);
+			prAdapter->rWifiVar.ucCsaDeauthClient =
+				FEATURE_ENABLED;
+
 			kalP2PTxCarrierOn(prAdapter->prGlueInfo,
 					prP2pBssInfo);
 		} else {
@@ -5536,5 +5560,88 @@ static void p2pRoleFsmHandleBssUnlink(struct ADAPTER *prAdapter,
 		kalP2pUnlinkBss(prAdapter->prGlueInfo, bss_desc->aucBSSID);
 	}
 }
+
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+void p2pRoleFsmCarrierOnTimeoutHandler(struct ADAPTER *prAdapter,
+	uintptr_t ulParamPtr)
+{
+	struct BSS_INFO *prP2pBssInfo = (struct BSS_INFO *)ulParamPtr;
+	struct MSG_P2P_NOTIFY_APGO_STARTED *prNotifyMsg = NULL;
+
+	if (!prAdapter || !prP2pBssInfo)
+		return;
+
+	DBGLOG(P2P, INFO, "bss idx=%u\n", prP2pBssInfo->ucBssIndex);
+
+	prNotifyMsg = (struct MSG_P2P_NOTIFY_APGO_STARTED *)
+		cnmMemAlloc(prAdapter, RAM_TYPE_MSG,
+				sizeof(*prNotifyMsg));
+	if (!prNotifyMsg) {
+		DBGLOG(NIC, ERROR, "Alloc mem(%zu) failed\n",
+			sizeof(*prNotifyMsg));
+		return;
+	}
+
+	prNotifyMsg->rMsgHdr.eMsgId =
+		MID_MNY_P2P_NOTIFY_APGO_STARTED;
+	prNotifyMsg->ucBssIdx = prP2pBssInfo->ucBssIndex;
+	mboxSendMsg(prAdapter, MBOX_ID_0,
+		    (struct MSG_HDR *)prNotifyMsg,
+		    MSG_SEND_METHOD_UNBUF);
+}
+
+void p2pRoleFsmRunEventApGoStarted(struct ADAPTER *prAdapter,
+				   struct MSG_HDR *prMsgHdr)
+{
+	struct MSG_P2P_NOTIFY_APGO_STARTED *prNotifyMsg =
+		(struct MSG_P2P_NOTIFY_APGO_STARTED *)prMsgHdr;
+	struct WIFI_VAR *prWifiVar;
+	struct BSS_INFO *prP2pBssInfo;
+	uint8_t ucRoleIdx;
+	u_int8_t fgIsSap = FALSE;
+
+	if (!prAdapter || !prNotifyMsg) {
+		DBGLOG(P2P, ERROR, "prAdapter=0x%p prNotifyMsg=0x%p\n",
+			prAdapter, prNotifyMsg);
+		return;
+	}
+
+	prWifiVar = &prAdapter->rWifiVar;
+	prP2pBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter, prNotifyMsg->ucBssIdx);
+	if (!prP2pBssInfo) {
+		DBGLOG(P2P, ERROR, "Invalid bss idx=%u\n",
+			prNotifyMsg->ucBssIdx);
+		goto exit;
+	}
+	ucRoleIdx = (uint8_t)prP2pBssInfo->u4PrivateData;
+	fgIsSap = p2pFuncIsAPMode(prWifiVar->prP2PConnSettings[ucRoleIdx]);
+
+	if (!IS_NET_PWR_STATE_ACTIVE(prAdapter, prNotifyMsg->ucBssIdx)) {
+		DBGLOG(P2P, WARN, "bss(%u)'s power state NOT active\n",
+			prNotifyMsg->ucBssIdx);
+		goto exit;
+	}
+
+	DBGLOG(P2P, INFO, "bss idx=%u, started=%d\n",
+		prP2pBssInfo->ucBssIndex,
+		prP2pBssInfo->fgIsApGoStarted);
+
+	if (prP2pBssInfo->fgIsApGoStarted)
+		goto exit;
+
+	if (timerPendingTimer(&(prP2pBssInfo->rP2pApGoCarrierOnTimer)))
+		cnmTimerStopTimer(prAdapter,
+				  &(prP2pBssInfo->rP2pApGoCarrierOnTimer));
+
+	prP2pBssInfo->fgIsApGoStarted = TRUE;
+	kalP2PTxCarrierOn(prAdapter->prGlueInfo, prP2pBssInfo);
+
+	if (fgIsSap)
+		p2pFuncNotifySapStarted(prAdapter, prP2pBssInfo->ucBssIndex);
+
+exit:
+	cnmMemFree(prAdapter, prMsgHdr);
+}
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
 
 #endif /* CFG_ENABLE_WIFI_DIRECT */

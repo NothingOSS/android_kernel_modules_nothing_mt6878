@@ -921,7 +921,10 @@ static void imgsys_cmdq_cb_work_plat7sp(struct work_struct *work)
 			(tsDvfsQosEnd-tsDvfsQosStart)
 			);
 #ifdef IMGSYS_CMDQ_CBPARAM_NUM
-	cb_param->isOccupy = false;
+	if (cb_param->isDynamic)
+		vfree(cb_param);
+	else
+		cb_param->isOccupy = false;
 #else
 	vfree(cb_param);
 #endif
@@ -1662,6 +1665,7 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 	u64 tsflushStart = 0, tsFlushEnd = 0;
 	bool isTimeShared = 0;
 	u32 log_sz = 0;
+	u32 cb_param_cnt = 0;
 
 	/* PMQOS API */
 	tsDvfsQosStart = ktime_get_boottime_ns()/1000;
@@ -1836,11 +1840,6 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 				frm_info->request_fd, frm_info->user_info[frm_idx].subfrm_idx,
 				frm_info->user_info[frm_idx].hw_comb, frm_info->frm_owner,
 				frm_idx, frm_num, blk_idx);
-			// Add secure token begin
-			#if IMGSYS_SECURE_ENABLE
-			if (frm_info->user_info[frm_idx].is_secFrm)
-				imgsys_cmdq_sec_cmd_plat7sp(pkt);
-			#endif
 
 			ret = imgsys_cmdq_parser_plat7sp(imgsys_dev, frm_info, pkt,
 				&cmd[cmd_idx], hw_comb,
@@ -1857,12 +1856,6 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 				goto sendtask_done;
 			}
 			cmd_idx += ret;
-
-			// Add secure token end
-			#if IMGSYS_SECURE_ENABLE
-			if (frm_info->user_info[frm_idx].is_secFrm)
-				imgsys_cmdq_sec_cmd_plat7sp(pkt);
-			#endif
 
 			IMGSYS_CMDQ_SYSTRACE_END();
 
@@ -1881,27 +1874,56 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 				/* Prepare cb param */
 #ifdef IMGSYS_CMDQ_CBPARAM_NUM
 				mutex_lock(&g_cb_param_lock);
-				g_cb_param_idx = (g_cb_param_idx+1)%IMGSYS_CMDQ_CBPARAM_NUM;
-				if ((g_cb_param_idx < 0)
-					|| g_cb_param_idx >= IMGSYS_CMDQ_CBPARAM_NUM) {
-					dev_info(imgsys_dev->dev,
-						"%s: force set g_cb_param_idx(%d) to 0! in block(%d) for frm(%d/%d)\n",
-						__func__, g_cb_param_idx, blk_idx,
-						frm_idx, frm_num);
-					g_cb_param_idx = 0;
+				for (cb_param_cnt = 0; cb_param_cnt < IMGSYS_CMDQ_CBPARAM_NUM;
+					cb_param_cnt++) {
+					g_cb_param_idx = (g_cb_param_idx+1)%IMGSYS_CMDQ_CBPARAM_NUM;
+					if ((g_cb_param_idx < 0)
+						|| g_cb_param_idx >= IMGSYS_CMDQ_CBPARAM_NUM) {
+						dev_info(imgsys_dev->dev,
+							"%s: force set g_cb_param_idx(%d) to 0! in block(%d) for frm(%d/%d)\n",
+							__func__, g_cb_param_idx, blk_idx,
+							frm_idx, frm_num);
+						g_cb_param_idx = 0;
+					}
+					cb_param = &g_cb_param[g_cb_param_idx];
+					if (cb_param->isOccupy) {
+						dev_info(imgsys_dev->dev,
+							"%s: g_cb_param[%d] is occypied!!! in block(%d) for frm(%d/%d)\n",
+							__func__, g_cb_param_idx, blk_idx,
+							frm_idx, frm_num);
+						continue;
+						//mutex_unlock(&g_cb_param_lock);
+						//if (isTimeShared)
+							//mutex_unlock(&(imgsys_dev->vss_blk_lock));
+						//return -1;
+					} else {
+						cb_param->isOccupy = true;
+						break;
+					}
 				}
-				cb_param = &g_cb_param[g_cb_param_idx];
-				if (cb_param->isOccupy) {
+				/* Fail to get available cb_param from pool */
+				if (cb_param_cnt == IMGSYS_CMDQ_CBPARAM_NUM) {
 					dev_info(imgsys_dev->dev,
-						"%s: g_cb_param[%d] is occypied!!! in block(%d) for frm(%d/%d)\n",
-						__func__, g_cb_param_idx, blk_idx,
+						"%s: all g_cb_param with cnt(%d) is occypied!!! in block(%d) for frm(%d/%d)\n",
+						__func__, cb_param_cnt, blk_idx,
 						frm_idx, frm_num);
+					cb_param =
+						vzalloc(sizeof(struct mtk_imgsys_cb_param));
+					if (cb_param == NULL) {
+						cmdq_pkt_destroy(pkt);
+					dev_info(imgsys_dev->dev,
+						"%s: cb_param is NULL! in block(%d) for frm(%d/%d)!\n",
+						__func__, blk_idx, frm_idx, frm_num);
 					mutex_unlock(&g_cb_param_lock);
+#ifndef CONFIG_FPGA_EARLY_PORTING
+					mtk_imgsys_power_ctrl_plat7sp(imgsys_dev, false);
+#endif
 					if (isTimeShared)
 						mutex_unlock(&(imgsys_dev->vss_blk_lock));
 					return -1;
+					}
+					cb_param->isDynamic = true;
 				}
-				cb_param->isOccupy = true;
 				mutex_unlock(&g_cb_param_lock);
                 if (imgsys_cmdq_dbg_enable_plat7sp()) {
 				dev_dbg(imgsys_dev->dev,
@@ -1912,7 +1934,6 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 #else
 				cb_param =
 					vzalloc(sizeof(struct mtk_imgsys_cb_param));
-#endif
 				if (cb_param == NULL) {
 					cmdq_pkt_destroy(pkt);
 					dev_info(imgsys_dev->dev,
@@ -1922,6 +1943,7 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 						mutex_unlock(&(imgsys_dev->vss_blk_lock));
 					return -1;
 				}
+#endif
                 if (imgsys_cmdq_dbg_enable_plat7sp()) {
 				dev_dbg(imgsys_dev->dev,
 				"%s: cb_param kzalloc success cb(%p) in block(%d) for frm(%d/%d)!\n",

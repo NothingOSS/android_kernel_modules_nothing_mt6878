@@ -506,7 +506,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.frame_length_max = 0xFFFF,
 	.ae_effective_frame = 2,///SHUTTER AND GAIN N+1 (long expose used)
 	.frame_time_delay_frame = 3,
-	.start_exposure_offset = 6200000,
+	.start_exposure_offset = 7800000,
 
 	.pdaf_type = PDAF_SUPPORT_CAMSV,
 	.hdr_type = HDR_SUPPORT_NA,  //check this sensor is stagger or not.

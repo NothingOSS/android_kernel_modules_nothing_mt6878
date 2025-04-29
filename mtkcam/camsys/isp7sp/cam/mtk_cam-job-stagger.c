@@ -31,6 +31,7 @@ int fill_imgo_buf_to_ipi_stagger(
 int apply_cam_mux_switch(struct mtk_cam_job *job)
 {
 	struct mtk_cam_ctx *ctx = job->src_ctx;
+	struct mtk_cam_device *cam = ctx->cam;
 	struct mtk_camsv_device *sv_dev = dev_get_drvdata(ctx->hw_sv);
 	struct mtk_mraw_device *mraw_dev;
 	struct mtk_mraw_pipeline *mraw_pipe;
@@ -44,6 +45,7 @@ int apply_cam_mux_switch(struct mtk_cam_job *job)
 	int raw_tg_idx = raw_to_tg_idx(raw_id);
 	int first_tag_idx, second_tag_idx, last_tag_idx;
 	int first_tag_idx_w, last_tag_idx_w, i;
+	int mraw_idx;
 	bool is_dc = is_dc_mode(job) ? true : false;
 
 	/**
@@ -349,9 +351,10 @@ int apply_cam_mux_switch(struct mtk_cam_job *job)
 	}
 
 	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
-		if (ctx->hw_mraw[i]) {
+		mraw_idx = ctx->mraw_subdev_idx[i];
+		if (cam->engines.mraw_devs[mraw_idx]) {
 			mraw_dev =
-				dev_get_drvdata(ctx->hw_mraw[i]);
+				dev_get_drvdata(cam->engines.mraw_devs[mraw_idx]);
 			mraw_pipe =
 				&ctx->cam->pipelines.mraw[ctx->mraw_subdev_idx[i]];
 

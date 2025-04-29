@@ -975,6 +975,7 @@ struct mt66xx_chip_info mt66xx_chip_info_mt6639 = {
 #if CFG_MTK_WIFI_EN_SW_EMI_READ
 	.is_en_sw_emi_read = TRUE,
 #endif
+	.fgDumpViaBtOnlyForDbgSOP = TRUE,
 #endif /* _HIF_PCIE */
 	.txd_append_size = MT6639_TX_DESC_APPEND_LENGTH,
 	.hif_txd_append_size = MT6639_HIF_TX_DESC_APPEND_LENGTH,
@@ -1047,7 +1048,6 @@ struct mt66xx_chip_info mt66xx_chip_info_mt6639 = {
 		BIT(CHIP_CAPA_FW_LOG_TIME_SYNC_BY_CCIF) |
 		BIT(CHIP_CAPA_XTAL_TRIM),
 	.checkbushang = mt6639_CheckBusHang,
-	.checkmcuoff = mt6639_CheckMcuOff,
 	.setCrypto = mt6639_set_crypto,
 	.rEmiInfo = {
 #if CFG_MTK_ANDROID_EMI
@@ -3471,6 +3471,14 @@ static int32_t mt6639_trigger_fw_assert(struct ADAPTER *prAdapter)
 
 #if CFG_WMT_RESET_API_SUPPORT
 	ret = reset_wait_for_trigger_completion();
+#endif
+
+#if CFG_MTK_WIFI_PCIE_SUPPORT
+	/* Check MCU off */
+	if (ret == -ETIMEDOUT) {
+		kalMdelay(500);
+		mt6639_CheckMcuOff(prAdapter);
+	}
 #endif
 
 	return ret;

@@ -1622,6 +1622,9 @@ void p2pFuncStopComplete(struct ADAPTER *prAdapter,
 			kalP2pNotifyDisconnComplete(prAdapter,
 				prP2pBssInfo->u4PrivateData);
 
+		if (IS_BSS_APGO(prP2pBssInfo))
+			prP2pBssInfo->fgIsApGoStarted = FALSE;
+
 		/* Reset current OPMode */
 		prP2pBssInfo->eCurrentOPMode = OP_MODE_INFRASTRUCTURE;
 		prP2pBssInfo->fgBcDefaultKeyExist = FALSE;
@@ -1933,7 +1936,18 @@ SKIP_START_RDD:
 		}
 #endif
 
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+		/* Wait for fw's setup done event and continue to
+		 * notify carrier_on & start all tx queues to
+		 * userspace
+		 */
+		cnmTimerStartTimer(prAdapter,
+				   &(prBssInfo->rP2pApGoCarrierOnTimer),
+				   AP_GO_DELAY_CARRIER_ON_TIMEOUT_MS);
+#else
+		prBssInfo->fgIsApGoStarted = TRUE;
 		kalP2PTxCarrierOn(prAdapter->prGlueInfo, prBssInfo);
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
 
 #if (CFG_SUPPORT_DFS_MASTER == 1)
 		if (prP2pChnlReqInfo->eBand == BAND_5G &&
@@ -8052,6 +8066,48 @@ exit:
 	/* return; */
 }
 
+void p2pFuncNotifySapStarted(struct ADAPTER *prAdapter,
+	uint8_t ucBssIdx)
+{
+#if CFG_HOTSPOT_SUPPORT_ADJUST_SCC
+	struct WIFI_VAR *prWifiVar = &prAdapter->rWifiVar;
+	struct BSS_INFO *prBssInfo;
+	struct GL_P2P_INFO *prP2PInfo;
+	struct P2P_ROLE_FSM_INFO *prP2pRoleFsmInfo;
+	struct P2P_CHNL_REQ_INFO *prP2pChnlReqInfo;
+	uint8_t ucRoleIdx;
+	u_int8_t fgIsSap = FALSE;
+
+	prBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter, ucBssIdx);
+	if (!prBssInfo) {
+		DBGLOG(P2P, ERROR, "Null bss by idx(%u)\n",
+			ucBssIdx);
+		return;
+	}
+
+	ucRoleIdx = (uint8_t)prBssInfo->u4PrivateData;
+	prP2PInfo = prAdapter->prGlueInfo->prP2PInfo[ucRoleIdx];
+	prP2pRoleFsmInfo = P2P_ROLE_INDEX_2_ROLE_FSM_INFO(prAdapter,
+		ucRoleIdx);
+	prP2pChnlReqInfo = &(prP2pRoleFsmInfo->rChnlReqInfo);
+	fgIsSap = p2pFuncIsAPMode(prWifiVar->prP2PConnSettings[ucRoleIdx]);
+
+	if (!fgIsSap)
+		return;
+
+	prP2PInfo->eChnlSwitchPolicy = CHNL_SWITCH_POLICY_NONE;
+	p2pFuncSwitchSapChannel(prAdapter);
+	if (prP2PInfo->eChnlSwitchPolicy != CHNL_SWITCH_POLICY_NONE) {
+		if (prP2pChnlReqInfo->fgIsChannelRequested)
+			p2pFuncReleaseCh(prAdapter, ucBssIdx,
+					 prP2pChnlReqInfo);
+
+		cnmTimerStopTimer(prAdapter,
+			&(prP2pRoleFsmInfo->rP2pRoleFsmTimeoutTimer));
+	}
+#endif
+}
+
 /*---------------------------------------------------------------------------*/
 /*!
  * \brief Get the pref freq list with maximum number assigned.
@@ -9545,5 +9601,39 @@ void p2pFuncGenerateP2p_IEForOwe(struct ADAPTER *prAdapter,
 		   prP2pSpecBssInfo->pucDHIEBuf,
 		   prP2pSpecBssInfo->ucDHIELen);
 	prMsduInfo->u2FrameLength += prP2pSpecBssInfo->ucDHIELen;
+}
+
+u_int8_t p2pFuncIsLteSafeChnl(enum ENUM_BAND eBand, uint8_t ucChnlNum,
+				 uint32_t *pau4SafeChnl)
+{
+	uint32_t u4SafeChInfo_2g = BITS(0, 31);
+	uint32_t u4SafeChInfo_5g_0 = BITS(0, 31);
+	uint32_t u4SafeChInfo_5g_1 = BITS(0, 31);
+	uint32_t u4SafeChInfo_6g = BITS(0, 31);
+
+	if (pau4SafeChnl) {
+		u4SafeChInfo_2g = pau4SafeChnl[ENUM_SAFE_CH_MASK_BAND_2G4];
+		u4SafeChInfo_5g_0 = pau4SafeChnl[ENUM_SAFE_CH_MASK_BAND_5G_0];
+		u4SafeChInfo_5g_1 = pau4SafeChnl[ENUM_SAFE_CH_MASK_BAND_5G_1];
+		u4SafeChInfo_6g = pau4SafeChnl[ENUM_SAFE_CH_MASK_BAND_6G];
+	}
+
+	if (eBand == BAND_2G4 && ucChnlNum <= 14) {
+		if (u4SafeChInfo_2g & BIT(ucChnlNum))
+			return TRUE;
+	} else if (eBand == BAND_5G && ucChnlNum >= 36 && ucChnlNum <= 144) {
+		if (u4SafeChInfo_5g_0 & BIT((ucChnlNum - 36) / 4))
+			return TRUE;
+	} else if (eBand == BAND_5G && ucChnlNum >= 149 && ucChnlNum <= 181) {
+		if (u4SafeChInfo_5g_1 & BIT((ucChnlNum - 149) / 4))
+			return TRUE;
+#if (CFG_SUPPORT_WIFI_6G == 1)
+	} else if (eBand == BAND_6G) {
+		if (u4SafeChInfo_6g & BIT((ucChnlNum - 5) / 16))
+			return TRUE;
+#endif
+	}
+
+	return FALSE;
 }
 #endif /* CFG_ENABLE_WIFI_DIRECT */

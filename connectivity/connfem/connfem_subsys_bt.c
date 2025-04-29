@@ -46,6 +46,8 @@ static struct connfem_epaelna_flag_tbl_entry bt_epaelna_flags_map[] = {
 	{"epa-elna",	(unsigned char*)&bt_epaelna_flags.epa_elna},
 	{"epa",		(unsigned char*)&bt_epaelna_flags.epa},
 	{"elna",	(unsigned char*)&bt_epaelna_flags.elna},
+	{"efem-mode",	(unsigned char*)&bt_epaelna_flags.efem_mode},
+	{"rx-mode",	(unsigned char*)&bt_epaelna_flags.rx_mode},
 	{NULL, NULL}
 };
 

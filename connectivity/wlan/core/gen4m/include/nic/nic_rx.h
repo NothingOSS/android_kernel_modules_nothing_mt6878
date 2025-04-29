@@ -1198,6 +1198,9 @@ struct ACTION_FRAME_SIZE_MAP {
 #define RX_GET_INDICATED_RFB_CNT(prRxCtrl) \
 	((prRxCtrl)->rIndicatedRfbList.u4NumElem)
 
+#define RX_GET_PACKET_MAX_SIZE(prAdapter) \
+	(CFG_RX_MAX_MPDU_SIZE - prAdapter->chip_info->rxd_size)
+
 #if CFG_DYNAMIC_RFB_ADJUSTMENT
 #define RX_GET_UNUSE_RFB_CNT(prRxCtrl) \
 	((prRxCtrl)->rUnUseRfbList.u4NumElem)

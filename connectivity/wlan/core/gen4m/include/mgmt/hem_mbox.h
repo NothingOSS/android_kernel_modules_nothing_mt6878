@@ -237,6 +237,9 @@ enum ENUM_MSG_ID {
 #endif /* ARP_MONITER_ENABLE */
 	MID_RSN_FW_DUMP,
 	MID_RSN_MIC_FAIL,
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+	MID_MNY_P2P_NOTIFY_APGO_STARTED,
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
 	MID_TOTAL_NUM
 };
 
@@ -414,6 +417,11 @@ struct MSG_FW_DUMP {
 	struct MSG_HDR rMsgHdr; /* Must be the first member */
 	enum ENUM_FW_DUMP eType;
 	uint8_t ucBssIndex;
+};
+
+struct MSG_P2P_NOTIFY_APGO_STARTED {
+	struct MSG_HDR rMsgHdr;	/* Must be the first member */
+	uint8_t ucBssIdx;
 };
 
 /* specific message data types */

@@ -30,6 +30,9 @@
 static int debug_cam_sv;
 module_param(debug_cam_sv, int, 0644);
 
+static int sv_fifo_full_times;
+module_param(sv_fifo_full_times, int, 0644);
+
 #undef dev_dbg
 #define dev_dbg(dev, fmt, arg...)		\
 	do {					\
@@ -1439,16 +1442,21 @@ void camsv_handle_err(
 
 	/* check dma fifo status */
 	if (!(data->err_tags) && (err_status & CAMSVCENTRAL_DMA_SRAM_FULL_ST)) {
-		dev_info_ratelimited(sv_dev->dev, "camsv dma fifo full\n");
-		mtk_cam_seninf_dump_current_status(ctx->seninf);
-
-		if (atomic_read(&sv_dev->is_seamless))
+		sv_fifo_full_times += 1;
+		dev_info_ratelimited(sv_dev->dev, "camsv dma fifo full times:%d\n", sv_fifo_full_times);
+		if (atomic_read(&sv_dev->is_seamless)) {
+			mtk_cam_seninf_dump_current_status(ctx->seninf);
 			mtk_cam_ctrl_dump_request(sv_dev->cam, CAMSYS_ENGINE_CAMSV, sv_dev->id,
 				frame_idx_inner, MSG_CAMSV_SEAMLESS_ERROR);
-		else {
-			if (cur_platform->hw->platform_id == 6989)
+		}
+		if (sv_fifo_full_times > 100) {
+			sv_fifo_full_times = 0;
+			if (cur_platform->hw->platform_id == 6989) {
+				mtk_cam_seninf_dump_current_status(ctx->seninf);
+				mtk_smi_dbg_hang_detect("camsys-camsv");
 				mtk_cam_ctrl_dump_request(sv_dev->cam, CAMSYS_ENGINE_CAMSV, sv_dev->id,
 					frame_idx_inner, MSG_CAMSV_ERROR);
+			}
 		}
 
 		mtk_cam_ctrl_notify_hw_hang(sv_dev->cam,
@@ -1821,8 +1829,8 @@ static irqreturn_t mtk_thread_irq_camsv(int irq, void *data)
 
 static int mtk_camsv_pm_suspend(struct device *dev)
 {
-	struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
-	u32 val;
+	//struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
+	//u32 val;
 	int ret;
 
 	dev_dbg(dev, "- %s\n", __func__);
@@ -1832,6 +1840,7 @@ static int mtk_camsv_pm_suspend(struct device *dev)
 
 	/* Disable ISP's view finder and wait for TG idle */
 	dev_info(dev, "camsv suspend, disable VF\n");
+#ifdef NOT_READY
 	val = readl(sv_dev->base + REG_CAMSVCENTRAL_VF_CON);
 	writel(val & (~CAMSVCENTRAL_VF_CON_VFDATA_EN),
 		sv_dev->base + REG_CAMSVCENTRAL_VF_CON);
@@ -1849,16 +1858,16 @@ static int mtk_camsv_pm_suspend(struct device *dev)
 	val = readl(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE);
 	writel(val & (~CAMSVCENTRAL_SEN_MODE_CMOS_EN),
 		sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE);
-
+#endif
 	/* Force ISP HW to idle */
-	ret = pm_runtime_put_sync(dev);
+	ret = pm_runtime_force_suspend(dev);
 	return ret;
 }
 
 static int mtk_camsv_pm_resume(struct device *dev)
 {
-	struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
-	u32 val;
+	//struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
+	//u32 val;
 	int ret;
 
 	dev_dbg(dev, "- %s\n", __func__);
@@ -1867,10 +1876,10 @@ static int mtk_camsv_pm_resume(struct device *dev)
 		return 0;
 
 	/* Force ISP HW to resume */
-	ret = pm_runtime_get_sync(dev);
+	ret = pm_runtime_force_resume(dev);
 	if (ret)
 		return ret;
-
+#ifdef NOT_READY
 	/* Enable CMOS */
 	dev_info(dev, "camsv resume, enable CMOS/VF\n");
 	val = readl(sv_dev->base + REG_CAMSVCENTRAL_SEN_MODE);
@@ -1881,7 +1890,7 @@ static int mtk_camsv_pm_resume(struct device *dev)
 	val = readl(sv_dev->base + REG_CAMSVCENTRAL_VF_CON);
 	writel(val | CAMSVCENTRAL_VF_CON_VFDATA_EN,
 		sv_dev->base + REG_CAMSVCENTRAL_VF_CON);
-
+#endif
 	return 0;
 }
 

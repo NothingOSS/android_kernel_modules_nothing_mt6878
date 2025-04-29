@@ -83,6 +83,7 @@
 //!#define smi_en
 //!#define WAKEUP_INIT
 #define ENQUE_FAIL -1
+#define gce_wait_enable 0
 
 #ifdef m4u_en
 #if IS_ENABLED(CONFIG_MTK_IOMMU_V2)
@@ -5233,7 +5234,6 @@ void my_wait(struct my_callback_data *my_data)
     kfree(my_data);
 }
 
-
 signed int CmdqDPEHW(struct frame *frame)
 {
 	struct DPE_Kernel_Config *pDpeConfig;
@@ -5709,12 +5709,27 @@ if (pDpeConfig->DPE_MODE == 3) {
 #ifdef CMdq_en
 cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x20000000, 0x20000000);
 //LOG_INF("DPE FW Tri = %x\n", pDpeConfig->DVS_CTRL00);
+#if gce_wait_enable == 1
 	if (pDpeConfig->DPE_MODE == 1) /* DVS ONLY MODE */
 		cmdq_pkt_wfe(handle, dvs_event_id);
 	else if (pDpeConfig->DPE_MODE == 3)
 		cmdq_pkt_wfe(handle, dvgf_event_id);
 	else
 		cmdq_pkt_wfe(handle, dvp_event_id);
+#else
+	if (pDpeConfig->DPE_MODE == 1) /* DVS ONLY MODE */
+		cmdq_pkt_poll_timeout(handle, 0x80000000, SUBSYS_NO_SUPPORT,
+			DVS_CTRL_STATUS0_HW, 0x80000000, 0xFFFF,
+			CMDQ_GPR_R03 + 9);
+	else if (pDpeConfig->DPE_MODE == 3)
+		cmdq_pkt_poll_timeout(handle, 0x80000000, SUBSYS_NO_SUPPORT,
+			DVGF_CTRL_STATUS0_HW, 0x80000000, 0xFFFF,
+			CMDQ_GPR_R03 + 9);
+	else
+		cmdq_pkt_poll_timeout(handle, 0x80000000, SUBSYS_NO_SUPPORT,
+			DVP_CTRL_STATUS0_HW, 0x80000000, 0xFFFF,
+			CMDQ_GPR_R03 + 9);
+#endif
 
 //cmdq_pkt_write(handle, dpe_clt_base, DVS_CTRL00_HW, 0x00000000, 0x20000000);
 #endif

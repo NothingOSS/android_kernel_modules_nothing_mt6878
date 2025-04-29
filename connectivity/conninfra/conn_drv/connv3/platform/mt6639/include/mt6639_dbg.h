@@ -8,7 +8,7 @@
 
 #include "connv3_hw_dbg.h"
 
-#define MT6639_CONN_INFRA_BUS_DUMP_VERSION	"20230418"
+#define MT6639_CONN_INFRA_BUS_DUMP_VERSION	"20240529"
 
 #define MT6639_AP2CONN_INFRA_ON_SLP_PROT	0x70028730
 #define MT6639_CONN_INFRA_CLK_DETECT		0x7c023000
@@ -69,6 +69,7 @@ const struct connv3_dbg_command mt6639_pwr_c[] = {
 	/* C28 */ {false, 0, 0, 0, true, 0x7C001620},
 	/* C29 */ {false, 0, 0, 0, true, 0x7C001610},
 	/* C30 */ {false, 0, 0, 0, true, 0x7C001600},
+	/* C31 */ {false, 0, 0, 0, true, 0x7C0120A0},
 };
 
 const struct connv3_dump_list mt6639_dmp_list_pwr_c = {

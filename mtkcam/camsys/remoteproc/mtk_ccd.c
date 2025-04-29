@@ -22,6 +22,8 @@ char ccd_firmware[100] = {0};
 
 //DECLARE_BUILTIN_FIRMWARE("remoteproc_scp", ccd_firmware);
 
+static bool ccd_opened;
+
 struct platform_device *ccd_get_pdev(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -178,7 +180,12 @@ static int ccd_open(struct inode *inode,
 	struct mtk_ccd *ccd = container_of(inode->i_cdev,
 					   struct mtk_ccd,
 					   ccd_cdev);
+
+	if (ccd_opened)
+		return -EBUSY;
+
 	filp->private_data = ccd;
+	ccd_opened = true;
 	dev_dbg(ccd->dev, "%s: %p\n", __func__, ccd);
 	return ret;
 }
@@ -190,9 +197,11 @@ static int ccd_release(struct inode *inode,
 	struct ccd_master_status_item master_obj;
 	struct mtk_ccd *ccd = (struct mtk_ccd *)filp->private_data;
 
+	dev_info(ccd->dev, "%s: %p\n", __func__, ccd);
 	master_obj.state = CCD_MASTER_EXIT;
 	ccd_master_destroy(ccd, &master_obj);
-	dev_info(ccd->dev, "%s: %p\n", __func__, ccd);
+	ccd_opened = false;
+
 	return ret;
 }
 

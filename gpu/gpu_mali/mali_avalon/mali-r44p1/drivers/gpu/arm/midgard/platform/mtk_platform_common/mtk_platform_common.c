@@ -76,6 +76,9 @@ static struct proc_dir_entry *proc_root;
 #include <platform/mtk_platform_common/mtk_platform_irq_trace.h>
 #endif /* CONFIG_MALI_MTK_IRQ_TRACE */
 
+#include <linux/of_irq.h>
+extern void mt_irq_dump_status(unsigned int irq);
+
 static bool mfg_powered;
 static DEFINE_MUTEX(mfg_pm_lock);
 static DEFINE_MUTEX(common_debug_lock);
@@ -108,7 +111,15 @@ void mtk_common_pm_mfg_idle(void)
 	mfg_powered = false;
 	mutex_unlock(&mfg_pm_lock);
 }
-
+#if IS_ENABLED(CONFIG_MALI_MTK_DIAGNOSIS_MODE)
+#if IS_ENABLED(CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG)
+#define MAX_STATES_NUM 16
+extern u8 mcu_state_array[MAX_STATES_NUM];
+extern u8 l2_state_array[MAX_STATES_NUM];
+extern int mcu_history_idx;
+extern int l2_history_idx;
+#endif /* CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG */
+#endif /* CONFIG_MALI_MTK_DIAGNOSIS_MODE */
 #if IS_ENABLED(CONFIG_MALI_MTK_DIAGNOSIS_MODE)
 #if IS_ENABLED(CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG)
 extern u64 mcu_state_history;
@@ -128,6 +139,11 @@ void mtk_common_debug(enum mtk_common_debug_types type, int pid, u64 hook_point)
 #if IS_ENABLED(CONFIG_MALI_MTK_DIAGNOSIS_MODE)
 	u64 diagnosis_mode = 0;
 	u64 diagnosis_dump_mask = 0;
+#if IS_ENABLED(CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG)
+	u8 tmp_state_array[MAX_STATES_NUM];
+	int tmp_idx = 0 ;
+	int i = 0 ;
+#endif
 #endif /* CONFIG_MALI_MTK_DIAGNOSIS_MODE */
 
 	if (IS_ERR_OR_NULL(kbdev))
@@ -139,15 +155,41 @@ void mtk_common_debug(enum mtk_common_debug_types type, int pid, u64 hook_point)
 		diagnosis_mode = mtk_diagnosis_mode_get_mode();
 		diagnosis_dump_mask = mtk_diagnosis_mode_get_dump_mask();
 #if IS_ENABLED(CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG)
-		dev_info(kbdev->dev, "mcu state back trace %llu->%llu->%llu->%llu->%llu->%llu->%llu->%llu\n",
-			((mcu_state_history >> 56) & 0xFF),
-			((mcu_state_history >> 48) & 0xFF),
-			((mcu_state_history >> 40) & 0xFF),
-			((mcu_state_history >> 32) & 0xFF),
-			((mcu_state_history >> 24) & 0xFF),
-			((mcu_state_history >> 16) & 0xFF),
-			((mcu_state_history >>  8) & 0xFF),
-			((mcu_state_history >>  0) & 0xFF));
+		tmp_idx = mcu_history_idx;
+		for (i = 0; i < MAX_STATES_NUM; i++) {
+			if (tmp_idx >= MAX_STATES_NUM)
+				tmp_idx = 0;
+			tmp_state_array[i] = mcu_state_array[tmp_idx];
+			tmp_idx ++;
+		}
+		dev_info(kbdev->dev, "mcu state back trace %hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu\n",
+			tmp_state_array[0],tmp_state_array[1],tmp_state_array[2],tmp_state_array[3],tmp_state_array[4],tmp_state_array[5],tmp_state_array[6],tmp_state_array[7],
+			tmp_state_array[8],tmp_state_array[9],tmp_state_array[10],tmp_state_array[11],tmp_state_array[12],tmp_state_array[13],tmp_state_array[14],tmp_state_array[15]);
+
+#if IS_ENABLED(CONFIG_MALI_MTK_LOG_BUFFER)
+		mtk_logbuffer_type_print(kbdev, MTK_LOGBUFFER_TYPE_CRITICAL | MTK_LOGBUFFER_TYPE_EXCEPTION,
+		"mcu state back trace %hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu\n",
+			tmp_state_array[0],tmp_state_array[1],tmp_state_array[2],tmp_state_array[3],tmp_state_array[4],tmp_state_array[5],tmp_state_array[6],tmp_state_array[7],
+			tmp_state_array[8],tmp_state_array[9],tmp_state_array[10],tmp_state_array[11],tmp_state_array[12],tmp_state_array[13],tmp_state_array[14],tmp_state_array[15]);
+#endif /* CONFIG_MALI_MTK_LOG_BUFFER */
+		tmp_idx = l2_history_idx;
+		for (i = 0; i < MAX_STATES_NUM; i++) {
+			if (tmp_idx >= MAX_STATES_NUM)
+				tmp_idx = 0;
+			tmp_state_array[i] = l2_state_array[tmp_idx];
+			tmp_idx ++;
+		}
+		dev_info(kbdev->dev, "l2 state back trace %hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu\n",
+			tmp_state_array[0],tmp_state_array[1],tmp_state_array[2],tmp_state_array[3],tmp_state_array[4],tmp_state_array[5],tmp_state_array[6],tmp_state_array[7],
+			tmp_state_array[8],tmp_state_array[9],tmp_state_array[10],tmp_state_array[11],tmp_state_array[12],tmp_state_array[13],tmp_state_array[14],tmp_state_array[15]);
+
+#if IS_ENABLED(CONFIG_MALI_MTK_LOG_BUFFER)
+		mtk_logbuffer_type_print(kbdev, MTK_LOGBUFFER_TYPE_CRITICAL | MTK_LOGBUFFER_TYPE_EXCEPTION,
+		"l2 state back trace %hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu->%hhu\n",
+			tmp_state_array[0],tmp_state_array[1],tmp_state_array[2],tmp_state_array[3],tmp_state_array[4],tmp_state_array[5],tmp_state_array[6],tmp_state_array[7],
+			tmp_state_array[8],tmp_state_array[9],tmp_state_array[10],tmp_state_array[11],tmp_state_array[12],tmp_state_array[13],tmp_state_array[14],tmp_state_array[15]);
+
+#endif /* CONFIG_MALI_MTK_LOG_BUFFER */
 #endif /* CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG */
 		dev_info(kbdev->dev, "diagnosis hook = 0x%08llx, mode = %llu, mask = 0x%08llx", hook_point, diagnosis_mode, diagnosis_dump_mask);
 		if (hook_point & diagnosis_dump_mask) {
@@ -176,6 +218,9 @@ void mtk_common_debug(enum mtk_common_debug_types type, int pid, u64 hook_point)
 	}
 
 	switch (type) {
+	case MTK_COMMON_DBG_DUMP_GIC_STATUS:
+		mtk_debug_dump_gic_status(kbdev);
+		break;
 	case MTK_COMMON_DBG_DUMP_INFRA_STATUS:
 		mtk_common_gpufreq_dump_infra_status(kbdev);
 		break;
@@ -285,6 +330,21 @@ void mtk_common_gpufreq_dump_infra_status(struct kbase_device *kbdev)
 #else
 		mt_gpufreq_dump_infra_status();
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
+	}
+}
+
+void mtk_debug_dump_gic_status(struct kbase_device *kbdev)
+{
+	int i = 0;
+	unsigned int irq = 0;
+	if(kbdev && kbdev->dev && kbdev->dev->of_node) {
+		/* Dump gic information */
+		for (i = 0; i < 3; i++) {
+			/* 0: GPU, 1: MMU, 2: JOB */
+			irq = irq_of_parse_and_map(kbdev->dev->of_node, i);
+			if (irq)
+				mt_irq_dump_status(irq);
+		}
 	}
 }
 

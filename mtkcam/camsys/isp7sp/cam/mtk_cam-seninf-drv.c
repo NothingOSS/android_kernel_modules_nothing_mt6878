@@ -2842,7 +2842,6 @@ static int seninf_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	mutex_lock(&ctx->mutex);
 	ctx->open_refcnt--;
-	ctx->is_aov_real_sensor = 0;
 
 	if (!ctx->open_refcnt) {
 		dev_info(ctx->dev, "%s open_refcnt %d\n", __func__, ctx->open_refcnt);
@@ -2870,6 +2869,8 @@ static int seninf_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 			ctx->pid = NULL;
 		}
 	}
+
+	ctx->is_aov_real_sensor = 0;
 
 	mutex_unlock(&ctx->mutex);
 

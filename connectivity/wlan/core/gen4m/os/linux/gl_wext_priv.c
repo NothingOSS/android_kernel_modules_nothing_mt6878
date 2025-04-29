@@ -10308,6 +10308,96 @@ int priv_driver_get_cfg(struct net_device *prNetDev, char *pcCommand,
 
 }				/* priv_driver_get_cfg  */
 
+#if (CFG_SUPPORT_MINIMIZE_BEACON_INTERVAL == 1)
+int priv_driver_process_MccCustPara(
+	struct ADAPTER *prAdapter,
+	char *pcCommand)
+{
+
+	int32_t i4Argc = 0, i4Ret = 0;
+	int8_t *apcArgv[20] = {NULL};
+	uint16_t u2MccRatio = 0, u2DevType1 = 0;
+	uint16_t u2DevType2 = 0, u2TotalTimeInMs = 0;
+	uint16_t u2GoTime = 0;
+
+	char buf[40] = {0};
+
+	if (!prAdapter || !pcCommand) {
+		DBGLOG(REQ, ERROR, "Invalid parameter.\n");
+		return WLAN_STATUS_FAILURE;
+	}
+
+	if (kalStrLen(pcCommand) > 39) {
+		DBGLOG(REQ, ERROR, "Too long strlen(%s)\n", pcCommand);
+		return WLAN_STATUS_FAILURE;
+	}
+
+	kalMemZero(buf, 40);
+	kalStrnCpy(buf, pcCommand, kalStrLen(pcCommand));
+
+	if (WLAN_STATUS_SUCCESS !=
+		wlanCfgParseArgument(buf, &i4Argc, apcArgv)) {
+		DBGLOG(REQ, ERROR, "Parse parameter error.\n");
+		return -1;
+	}
+#if 0
+	int32_t i = 0;
+
+	DBGLOG(REQ, TRACE, "argc is %i\n", i4Argc);
+	for (i = 0; i < i4Argc; i++)
+		DBGLOG(REQ, TRACE, "argv[%d] is %s\n", i4Argc,
+			apcArgv[i]);
+#endif
+	i4Ret = kalkStrtou16(apcArgv[2], 0, &u2MccRatio);
+	if (i4Ret) {
+		DBGLOG(REQ, ERROR, "NCHO parse u4MccRatio error %d\n",
+			   i4Ret);
+		return WLAN_STATUS_INVALID_DATA;
+	}
+
+	i4Ret = kalkStrtou16(apcArgv[3], 0, &u2DevType1);
+	if (i4Ret) {
+		DBGLOG(REQ, ERROR, "NCHO parse u4MccRatio error %d\n",
+			   i4Ret);
+		return WLAN_STATUS_INVALID_DATA;
+	}
+
+	i4Ret = kalkStrtou16(apcArgv[4], 0, &u2DevType2);
+	if (i4Ret) {
+		DBGLOG(REQ, ERROR, "NCHO parse u4MccRatio error %d\n",
+			   i4Ret);
+		return WLAN_STATUS_INVALID_DATA;
+	}
+
+	i4Ret = kalkStrtou16(apcArgv[5], 0, &u2TotalTimeInMs);
+	if (i4Ret) {
+		DBGLOG(REQ, ERROR, "NCHO parse u4MccRatio error %d\n",
+			   i4Ret);
+		return WLAN_STATUS_INVALID_DATA;
+	}
+
+	if ((u2DevType1 == 0) && (u2DevType2 == 3)
+		&& (u2TotalTimeInMs != 0)) {
+		/* sta:go case on.*/
+		u2GoTime = u2TotalTimeInMs * u2MccRatio / 100;
+		DBGLOG(REQ, TRACE, "u2GoTime is %u\n", u2GoTime);
+		/* Beacon Interval = u2GoTime - 10ms AND
+		 * Beacon Interval >= 20
+		 */
+		if (u2GoTime >= 30)
+			prAdapter->rWifiVar.ucGoBcnIntrvl = u2GoTime - 10;
+		else
+			prAdapter->rWifiVar.ucGoBcnIntrvl = 0;
+	} else
+		prAdapter->rWifiVar.ucGoBcnIntrvl = 0;
+
+	DBGLOG(REQ, TRACE, "Set BcnInt value to (%u).\n",
+				prAdapter->rWifiVar.ucGoBcnIntrvl);
+
+	return WLAN_STATUS_SUCCESS;
+}
+#endif
+
 int priv_driver_set_chip_config(struct net_device *prNetDev,
 				char *pcCommand, int i4TotalLen)
 {
@@ -10391,6 +10481,12 @@ int priv_driver_set_chip_config(struct net_device *prNetDev,
 		}
 #endif /* CFG_SUPPORT_802_11AX  == 1 */
 
+#if (CFG_SUPPORT_MINIMIZE_BEACON_INTERVAL == 1)
+	if (kalStrnCmp("set_chip MccCustPara",
+		pcCommand, kalStrLen("set_chip MccCustPara")) == 0)
+		i4Ret = priv_driver_process_MccCustPara(prAdapter,
+						pcCommand);
+#endif
 		rStatus = kalIoctl(prGlueInfo, wlanoidSetChipConfig,
 				   &rChipConfigInfo, sizeof(rChipConfigInfo),
 				   &u4BufLen);

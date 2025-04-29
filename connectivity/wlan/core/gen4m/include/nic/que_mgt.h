@@ -1360,8 +1360,6 @@ void qmArpMonitorHandlePkt(struct ADAPTER *prAdapter,
 	struct ARP_MONITOR_PKT_INFO *prArpMonPktInfo);
 #endif /* CFG_QM_ARP_MONITOR_MSG */
 uint8_t *qmGetArpPkt(uint8_t *pucData, uint16_t u2PacketLen);
-struct DHCP_PROTOCOL *qmGetDhcpPkt(uint8_t *pucData, uint16_t u2PacketLen,
-	u_int8_t fgFromServer, uint16_t *pDhcpLen);
 void qmGetRxSrcMac(struct ADAPTER *prAdapter,
 	struct SW_RFB *prSwRfb, uint8_t *prMacAddr);
 void qmArpMonitorGetUnicastPktTime(struct ADAPTER *prAdapter,

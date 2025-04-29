@@ -90,7 +90,7 @@ static struct mtk_raw_device *get_raw_dev(struct mtk_yuv_device *yuv_dev)
 	return dev_get_drvdata(dev);
 }
 
-static void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt, bool is_slb)
+void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt, bool is_slb)
 {
 	struct mtk_cam_device *cam_dev = dev->cam;
 	struct mtk_yuv_device *yuv_dev = get_yuv_dev(dev);
@@ -677,29 +677,30 @@ void write_pkt_trigger_apu_frame_mode(struct mtk_raw_device *dev,
 	write_pkt_apu_raw(dev, pkt, false /* is_apu_dc */);
 }
 
-#define DBG_SEL_RAWI_R2_SMI_DBG_DATA    0x00000506
-#define DBG_SEL_UFDI_R2_SMI_DBG_DATA    0x00000508
-#define DBG_SEL_RAWI_R5_SMI_DBG_DATA    0x0000050C
-#define DBG_SEL_UFDI_R5_SMI_DBG_DATA    0x0000050E
 #define DBG_SEL_RAWI_R2_SMI_PORT        0x000000A4
 #define DBG_SEL_UFDI_R2_SMI_PORT        0x000000A5
 #define DBG_SEL_RAWI_R5_SMI_PORT        0x000000A8
 #define DBG_SEL_UFDI_R5_SMI_PORT        0x000000A9
-bool is_rawi_ufdi_rdone_zero(struct mtk_raw_device *dev)
+bool is_rawi_ufdi_read_done(struct mtk_raw_device *dev)
 {
-	u32 rawi_r2_dbg, ufdi_r2_dbg, rawi_r5_dbg, ufdi_r5_dbg;
+	u32 rawi_r2_stat, ufdi_r2_stat, rawi_r5_stat, ufdi_r5_stat;
 
-	writel(DBG_SEL_RAWI_R2_SMI_DBG_DATA, dev->base + REG_CAMRAWDMATOP_DMA_DBG_SEL);
-	rawi_r2_dbg = readl(dev->base + REG_CAMRAWDMATOP_DMA_DBG_PORT);
-	writel(DBG_SEL_UFDI_R2_SMI_DBG_DATA, dev->base + REG_CAMRAWDMATOP_DMA_DBG_SEL);
-	ufdi_r2_dbg = readl(dev->base + REG_CAMRAWDMATOP_DMA_DBG_PORT);
-	writel(DBG_SEL_RAWI_R5_SMI_DBG_DATA, dev->base + REG_CAMRAWDMATOP_DMA_DBG_SEL);
-	rawi_r5_dbg = readl(dev->base + REG_CAMRAWDMATOP_DMA_DBG_PORT);
-	writel(DBG_SEL_UFDI_R5_SMI_DBG_DATA, dev->base + REG_CAMRAWDMATOP_DMA_DBG_SEL);
-	ufdi_r5_dbg = readl(dev->base + REG_CAMRAWDMATOP_DMA_DBG_PORT);
+	writel(DBG_SEL_RAWI_R2_SMI_PORT, dev->base + REG_CAMRAWDMATOP_DMA_DBG_SEL);
+	rawi_r2_stat = readl(dev->base + REG_CAMRAWDMATOP_DMA_DBG_PORT);
 
-	if (rawi_r2_dbg & BIT(19) && ufdi_r2_dbg & BIT(19) &&
-	    rawi_r5_dbg & BIT(19) && ufdi_r5_dbg & BIT(19))
+	writel(DBG_SEL_UFDI_R2_SMI_PORT, dev->base + REG_CAMRAWDMATOP_DMA_DBG_SEL);
+	ufdi_r2_stat = readl(dev->base + REG_CAMRAWDMATOP_DMA_DBG_PORT);
+
+	writel(DBG_SEL_RAWI_R5_SMI_PORT, dev->base + REG_CAMRAWDMATOP_DMA_DBG_SEL);
+	rawi_r5_stat = readl(dev->base + REG_CAMRAWDMATOP_DMA_DBG_PORT);
+
+	writel(DBG_SEL_UFDI_R5_SMI_PORT, dev->base + REG_CAMRAWDMATOP_DMA_DBG_SEL);
+	ufdi_r5_stat = readl(dev->base + REG_CAMRAWDMATOP_DMA_DBG_PORT);
+
+	if ((rawi_r2_stat >> 16) == (rawi_r2_stat & 0xffff) &&
+		(ufdi_r2_stat >> 16) == (ufdi_r2_stat & 0xffff) &&
+		(rawi_r5_stat >> 16) == (rawi_r5_stat & 0xffff) &&
+		(ufdi_r5_stat >> 16) == (ufdi_r5_stat & 0xffff))
 		return true;
 
 	return false;
@@ -772,7 +773,7 @@ bool is_all_dma_idle(struct mtk_raw_device *dev)
 	if (raw_rst_stat == RAW_RST_STAT_CHECK &&
 		raw_rst_stat2 == RAW_RST_STAT2_CHECK &&
 		yuv_rst_stat == YUV_RST_STAT_CHECK)
-		return is_rawi_ufdi_rdone_zero(dev);
+		return is_rawi_ufdi_read_done(dev);
 
 	return false;
 }

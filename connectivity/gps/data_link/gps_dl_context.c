@@ -108,7 +108,7 @@ static struct gps_dl_runtime_cfg s_gps_rt_cfg = {
 
 struct gps_each_link *gps_dl_link_get(enum gps_dl_link_id_enum link_id)
 {
-	if (link_id >= 0 && link_id < GPS_DATA_LINK_NUM)
+	if ((unsigned int)link_id < (unsigned int)GPS_DATA_LINK_NUM)
 		return &s_gps_dl_ctx.links[link_id];
 
 	return NULL;
@@ -116,7 +116,7 @@ struct gps_each_link *gps_dl_link_get(enum gps_dl_link_id_enum link_id)
 
 struct gps_each_irq *gps_dl_irq_get(enum gps_dl_irq_index_enum irq_idx)
 {
-	if (irq_idx >= 0 && irq_idx < GPS_DL_IRQ_NUM)
+	if ((unsigned int)irq_idx < (unsigned int)GPS_DL_IRQ_NUM)
 		return &s_gps_dl_ctx.irqs[irq_idx];
 
 	return NULL;
@@ -125,7 +125,7 @@ struct gps_each_irq *gps_dl_irq_get(enum gps_dl_irq_index_enum irq_idx)
 #if GPS_DL_ON_LINUX
 struct gps_each_device *gps_dl_device_get(enum gps_dl_link_id_enum link_id)
 {
-	if (link_id >= 0 && link_id < GPS_DATA_LINK_NUM)
+	if ((unsigned int)link_id < (unsigned int)GPS_DATA_LINK_NUM)
 		return &s_gps_dl_ctx.devices[link_id];
 
 	return NULL;

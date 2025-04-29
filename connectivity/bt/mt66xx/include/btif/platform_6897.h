@@ -176,6 +176,7 @@
 
 #define BGF_DRIVER_DUMP_BASE				(0x18023000)
 
+#define BGF2AP_CONN_INFRA_ON_CCIF4_BGF2AP_PCCIF_ACK_ADDR       (0x1803E014)
 
 /*********************************************************************
 *
@@ -942,8 +943,9 @@ host_csr_only:
 	REG_WRITEL(CON_REG_SPM_BASE_ADDR + 0xA8, 0x194C4BA7);
 	BTMTK_INFO("Write [0x180600A8] = [0x194C4BA7]");
 #endif
+#endif
 	bt_dump_bgfsys_all();
-
+#if 0
 #if (CFG_BT_ATF_SUPPORT == 1)
         bt_conn_infra_on_off_smc(SMC_BT_CONN_INFRA_FORCE_ON_OFF_OPID, 0);
 #else
@@ -1354,6 +1356,9 @@ static inline int32_t bgfsys_power_on(void)
 	BTMTK_DBG("clear fw own IRQ");
 	REG_WRITEL(BGF_IRQ_STAT, BGF_IRQ_FW_OWN_SET_B);
 	REG_WRITEL(BGF_IRQ_STAT2, BGF_IRQ_FW_OWN_SET_B);
+
+	/* ack AP2BGF CCIF */
+	bt_write_cr(BGF2AP_CONN_INFRA_ON_CCIF4_BGF2AP_PCCIF_ACK_ADDR, 0xFF, FALSE);
 
 	/* release n10 cpu core */
 	SET_BIT(CONN_INFRA_RGU_BGFSYS_CPU_SW_RST, BGF_CPU_SW_RST_B);

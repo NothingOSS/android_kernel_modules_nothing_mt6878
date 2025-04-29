@@ -2670,6 +2670,7 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_job *job,
 	struct mtk_cam_ctx *ctx = job->src_ctx;
 	struct mtk_cam_device *cam = ctx->cam;
 	struct v4l2_subdev *seninf = ctx->seninf;
+	unsigned int mraw_idx;
 	int ret;
 	int i;
 
@@ -2734,9 +2735,10 @@ int ctx_stream_on_seninf_sensor(struct mtk_cam_job *job,
 
 	/* mraw */
 	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
-		if (ctx->hw_mraw[i]) {
+		mraw_idx = ctx->mraw_subdev_idx[i];
+		if (cam->engines.mraw_devs[mraw_idx]) {
 			struct mtk_mraw_device *mraw_dev =
-				dev_get_drvdata(ctx->hw_mraw[i]);
+				dev_get_drvdata(cam->engines.mraw_devs[mraw_idx]);
 			struct mtk_mraw_pipeline *mraw_pipe =
 				&cam->pipelines.mraw[ctx->mraw_subdev_idx[i]];
 
@@ -2845,7 +2847,7 @@ void mtk_cam_ctx_engine_off(struct mtk_cam_ctx *ctx)
 		mtk_cam_sv_dev_stream_on(sv_dev, false, 0, 0);
 	}
 
-	for (i = 0; i < ctx->num_mraw_subdevs; i++) {
+	for (i = 0 ; i < ARRAY_SIZE(ctx->hw_mraw); i++) {
 		if (ctx->hw_mraw[i]) {
 			mraw_dev = dev_get_drvdata(ctx->hw_mraw[i]);
 			mtk_cam_mraw_dev_stream_on(mraw_dev, false);
@@ -3365,9 +3367,9 @@ static int mtk_cam_master_bind(struct device *dev)
 
 	mutex_lock(&cam_dev->v4l2_dev.mdev->graph_mutex);
 	mtk_cam_create_links(cam_dev);
+	mutex_unlock(&cam_dev->v4l2_dev.mdev->graph_mutex);
 	/* Expose all subdev's nodes */
 	ret = v4l2_device_register_subdev_nodes(&cam_dev->v4l2_dev);
-	mutex_unlock(&cam_dev->v4l2_dev.mdev->graph_mutex);
 	if (ret) {
 		dev_dbg(dev, "Failed to register subdev nodes\n");
 		goto fail_unreg_mraw_entities;
@@ -4001,7 +4003,7 @@ static int mtk_cam_mminfra_dbg_cb(struct notifier_block *nb,
 		if (hsf_en == 0)
 			raw_dump_dma_status(raw);
 
-		pm_runtime_put_sync(raw->dev);
+		pm_runtime_put(raw->dev);
 	}
 
 	return 0;

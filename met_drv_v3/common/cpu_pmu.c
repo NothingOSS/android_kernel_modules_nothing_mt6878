@@ -7,6 +7,7 @@
 #include <linux/cpu_pm.h>
 #include <linux/perf_event.h>
 #include <asm/sysreg.h>
+#include <linux/perf/arm_pmuv3.h>
 
 #if (IS_ENABLED(CONFIG_ARM64) || IS_ENABLED(CONFIG_ARM))
 #include <linux/platform_device.h>

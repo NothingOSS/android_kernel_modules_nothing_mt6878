@@ -1748,16 +1748,6 @@ static int mtk_hcp_mmap(struct file *file, struct vm_area_struct *vma)
 static void module_notify(struct mtk_hcp *hcp_dev,
 					struct share_buf *user_data_addr)
 {
-	void *gce_buf = NULL;
-	int req_fd = 0;
-	struct img_sw_buffer *swbuf_data = NULL;
-	struct swfrm_info_t *swfrm_info = NULL;
-	struct mtk_imgsys_request *req = NULL;
-	u64 *req_stat = NULL;
-#if SMVR_DECOUPLE
-unsigned int mode = imgsys_streaming;
-#endif
-
 	if (!user_data_addr) {
 		dev_info(hcp_dev->dev, "%s invalid null share buffer", __func__);
 		return;
@@ -1768,60 +1758,10 @@ unsigned int mode = imgsys_streaming;
 		return;
 	}
 
-    if (hcp_dbg_enable())
-	dev_dbg(hcp_dev->dev, " %s with message id:%d\n",
-				__func__, user_data_addr->id);
+	if (hcp_dbg_enable())
+		dev_dbg(hcp_dev->dev, " %s with message id:%d\n",
+			__func__, user_data_addr->id);
 
-	swbuf_data = (struct img_sw_buffer *)user_data_addr->share_data;
-	if (swbuf_data && user_data_addr->id == HCP_IMGSYS_FRAME_ID) {
-#if SMVR_DECOUPLE
-		 switch (swbuf_data->scp_addr) {
-        case imgsys_streaming:
-        case imgsys_capture:
-        case imgsys_smvr:
-                mode  = swbuf_data->scp_addr;
-                break;
-        default:
-                dev_warn(hcp_dev->dev, " %s with message id:%d, w/ unexpected mode(%d/%d)\n",
-                    __func__, user_data_addr->id, swbuf_data->scp_addr, mode);
-                break;
-        }
-        //dev_dbg(hcp_dev->dev, " %s with message id:%d scp_addr(%d) mode(%d) swbuf_data->offset(0x%x)\n",
-        //    __func__, user_data_addr->id,
-        //    swbuf_data->scp_addr, mode,
-        //    swbuf_data->offset);
-		if (hcp_dev->data && hcp_dev->data->get_gce_virt)
-			gce_buf = hcp_dev->data->get_gce_virt(mode);
-            #else
-		if (hcp_dev->data && hcp_dev->data->get_gce_virt)
-			gce_buf = hcp_dev->data->get_gce_virt();
-            #endif
-
-		if (gce_buf)
-			swfrm_info = (struct swfrm_info_t *)(gce_buf + (swbuf_data->offset));
-#if SMVR_DECOUPLE
-//dev_info(hcp_dev->dev,
-//            " %s with message id:%d gce_buf/swfrm_info (%lx/%lx) scp_addr(%d) mode(%d) swbuf_data->offset(0x%x)",
-//            __func__, user_data_addr->id,
-//            (unsigned long)gce_buf, (unsigned long)swfrm_info, swbuf_data->scp_addr, mode,
-//            swbuf_data->offset);
-#endif
-		if (swfrm_info && swfrm_info->is_lastfrm)
-			req = (struct mtk_imgsys_request *)swfrm_info->req_vaddr;
-
-		if (req) {
-			req_fd = req->tstate.req_fd;
-			req_stat = req->req_stat;
-		}
-
-		if (req_stat) {
-			*req_stat = *req_stat + 1;
-            if (hcp_dbg_enable())
-			dev_dbg(hcp_dev->dev, "req:%d req_stat(%p):%llu\n",
-				req_fd, req_stat, *req_stat);
-		}
-
-	}
 	if (hcp_dev->hcp_desc_table[user_data_addr->id].handler) {
 		hcp_dev->hcp_desc_table[user_data_addr->id].handler(
 			user_data_addr->share_data,

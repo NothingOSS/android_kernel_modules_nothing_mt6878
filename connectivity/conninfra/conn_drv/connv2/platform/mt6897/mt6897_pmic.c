@@ -59,6 +59,8 @@ static struct regulator *reg_buckboost;
 static struct notifier_block vrfio18_nb;
 static struct notifier_block vcn13_nb;
 
+bool with_1v8_efem_support;
+
 static struct conninfra_dev_cb* g_dev_cb;
 
 /*******************************************************************************
@@ -99,6 +101,7 @@ const struct consys_platform_pmic_ops g_consys_platform_pmic_ops_mt6897 = {
 int consys_plt_pmic_get_from_dts_mt6897(struct platform_device *pdev, struct conninfra_dev_cb* dev_cb)
 {
 	int ret;
+	const char *with_1v8_efem;
 
 	g_dev_cb = dev_cb;
 	reg_VCN13 = devm_regulator_get_optional(&pdev->dev, "mt6363_vcn13");
@@ -142,6 +145,15 @@ int consys_plt_pmic_get_from_dts_mt6897(struct platform_device *pdev, struct con
 	if (IS_ERR(reg_buckboost)) {
 		pr_info("Regulator_get buckboost fail\n");
 		reg_buckboost = NULL;
+	}
+
+	with_1v8_efem_support = false;
+	ret = of_property_read_string(pdev->dev.of_node, "with_1v8_efem", &with_1v8_efem);
+	if (!ret) {
+		if (strcmp(with_1v8_efem, "true") == 0) {
+			with_1v8_efem_support = true;
+			pr_info("[%s] Support 1v8 eFEM", __func__);
+		}
 	}
 
 	return 0;
@@ -692,20 +704,65 @@ static int consys_pmic_vant18_power_ctl_mt6897(bool enable)
 			ret = regulator_disable(reg_VANT18);
 			if (ret)
 				pr_notice("%s regulator_disable err:%d", __func__, ret);
+		} else if (consys_is_rc_mode_enable_mt6897() == 1 && with_1v8_efem_support) {
+			/*
+			 * set PMIC VANT18 LDO SW_OP_EN =0, SW_EN = 0, SW_LP =0 (sw disable)
+			 * (by ""standard kernal PMIC API"" and ""PMIC table"")
+			 * (For bring-up, we use external LDO instead)
+			 * (For normal case, we should use PMIC)
+			 */
+			regulator_disable(reg_VANT18);
+			regulator_set_mode(reg_VANT18, REGULATOR_MODE_NORMAL);
 		}
 		return ret;
 	}
 
 	if (consys_is_rc_mode_enable_mt6897()) {
-		/* 1. set PMIC VANT18 LDO PMIC HW mode control by PMRC_EN[10][6] */
-		/* 1.1. set PMIC VANT18 LDO op_mode = 0 */
-		/* 1.2. set PMIC VANT18 LDO  HW_OP_EN = 1, HW_OP_CFG = 0 */
-		regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_MODE_ADDR, 1 << 2, 0 << 2);
-		regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_EN_ADDR,   1 << 2, 1 << 2);
-		regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_CFG_ADDR,  1 << 2, 0 << 2);
-		regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_MODE_ADDR,  1 << 6, 0 << 6);
-		regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_EN_ADDR,    1 << 6, 1 << 6);
-		regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_CFG_ADDR,   1 << 6, 0 << 6);
+		if (with_1v8_efem_support) {
+			/*
+			 * 1. set PMIC VANT18 LDO PMIC HW mode control by PMRC_EN[10][6][7][8]
+			 * (by ""standard kernal PMIC API"" and ""PMIC table"")
+			 * 1.1. set PMIC VANT18 LDO op_mode = 0
+			 * (by ""standard kernal PMIC API"" and ""PMIC table"")
+			 * 1.2. set PMIC VANT18 LDO  HW_OP_EN = 1, HW_OP_CFG = 0
+			 * (by ""standard kernal PMIC API"" and ""PMIC table"")
+			 * (For bring-up, we use external LDO instead)
+			 * (For normal case, we should use PMIC)
+			 * 2. set PMIC VANT18 LDO SW_OP_EN =1, SW_EN = 1, SW_LP =1
+			 * (sw enable & into low power mode)
+			 * (by "standard kernal PMIC API" and "PMIC table")
+			 * (For bring-up, we use external LDO instead)
+			 * (For normal case, we should use PMIC)
+			 */
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_MODE_ADDR, 1 << 2, 0 << 2);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_EN_ADDR,   1 << 2, 1 << 2);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_CFG_ADDR,  1 << 2, 0 << 2);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_MODE_ADDR, 1 << 6, 0 << 6);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_EN_ADDR,   1 << 6, 1 << 6);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_CFG_ADDR,  1 << 6, 0 << 6);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC7_OP_MODE_ADDR, 1 << 7, 0 << 7);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC7_OP_EN_ADDR,   1 << 7, 1 << 7);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC7_OP_CFG_ADDR,  1 << 7, 0 << 7);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC8_OP_MODE_ADDR, 1 << 0, 0 << 0);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC8_OP_EN_ADDR,   1 << 0, 1 << 0);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC8_OP_CFG_ADDR,  1 << 0, 0 << 0);
+
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_SW_OP_EN_ADDR, 1 << 7, 1 << 7);
+			ret = regulator_enable(reg_VANT18);
+			if (ret)
+				pr_notice("%s regulator_enable err: %d", __func__, ret);
+			regulator_set_mode(reg_VANT18, REGULATOR_MODE_IDLE);
+		} else {
+			/* 1. set PMIC VANT18 LDO PMIC HW mode control by PMRC_EN[10][6] */
+			/* 1.1. set PMIC VANT18 LDO op_mode = 0 */
+			/* 1.2. set PMIC VANT18 LDO  HW_OP_EN = 1, HW_OP_CFG = 0 */
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_MODE_ADDR, 1 << 2, 0 << 2);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_EN_ADDR,   1 << 2, 1 << 2);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC10_OP_CFG_ADDR,  1 << 2, 0 << 2);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_MODE_ADDR,  1 << 6, 0 << 6);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_EN_ADDR,    1 << 6, 1 << 6);
+			regmap_update_bits(r, MT6368_RG_LDO_VANT18_RC6_OP_CFG_ADDR,   1 << 6, 0 << 6);
+		}
 	} else {
 		/* 1. set PMIC VANT18 LDO PMIC HW mode control by SRCCLKENA0 */
 		/* 1.1. set PMIC VANT18 LDO op_mode = 1 */

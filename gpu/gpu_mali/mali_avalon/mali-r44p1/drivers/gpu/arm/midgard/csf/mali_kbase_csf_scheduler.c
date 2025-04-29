@@ -760,11 +760,12 @@ static void enqueue_gpu_idle_work(struct kbase_csf_scheduler *const scheduler)
 	queue_work(scheduler->idle_wq, &scheduler->gpu_idle_work);
 }
 
-void kbase_csf_scheduler_process_gpu_idle_event(struct kbase_device *kbdev)
+bool kbase_csf_scheduler_process_gpu_idle_event(struct kbase_device *kbdev)
 {
 	struct kbase_csf_scheduler *scheduler = &kbdev->csf.scheduler;
 	int non_idle_offslot_grps;
 	bool can_suspend_on_idle;
+	bool invoke_pm_state_machine = false;
 #if IS_ENABLED(CONFIG_MALI_MTK_ADAPTIVE_POWER_POLICY)
 	ktime_t expiry_time;
 #endif /* CONFIG_MALI_MTK_ADAPTIVE_POWER_POLICY */
@@ -787,6 +788,23 @@ void kbase_csf_scheduler_process_gpu_idle_event(struct kbase_device *kbdev)
 			scheduler->fast_gpu_idle_handling =
 				(kbdev->csf.gpu_idle_hysteresis_ns == 0) ||
 				!kbase_csf_scheduler_all_csgs_idle(kbdev);
+
+			/* If GPU idle event occurred after the runtime suspend was aborted due to
+			 * DB_MIRROR irq then it suggests that Userspace submission didn't make GPU
+			 * non-idle. So the planned resumption of scheduling can be cancelled and
+			 * MCU can be put back to sleep state to re-trigger the runtime suspend.
+			 */
+			if (unlikely(kbdev->pm.backend.exit_gpu_sleep_mode &&
+				     kbdev->pm.backend.runtime_suspend_abort_reason ==
+					     ABORT_REASON_DB_MIRROR_IRQ)) {
+				/* Cancel the planned resumption of scheduling */
+				kbdev->pm.backend.exit_gpu_sleep_mode = false;
+				kbdev->pm.backend.runtime_suspend_abort_reason = ABORT_REASON_NONE;
+				/* PM state machine can be invoked to put MCU back to the sleep
+				 * state right away and thereby re-trigger the runtime suspend.
+				 */
+				invoke_pm_state_machine = true;
+			}
 
 			/* The GPU idle worker relies on update_on_slot_queues_offsets() to have
 			 * finished. It's queued before to reduce the time it takes till execution
@@ -824,6 +842,8 @@ void kbase_csf_scheduler_process_gpu_idle_event(struct kbase_device *kbdev)
 		/* Invoke the scheduling tick to get the non-idle suspended groups loaded soon */
 		kbase_csf_scheduler_invoke_tick(kbdev);
 	}
+
+	return invoke_pm_state_machine;
 }
 
 u32 kbase_csf_scheduler_get_nr_active_csgs_locked(struct kbase_device *kbdev)
@@ -1086,6 +1106,8 @@ static int scheduler_pm_active_after_sleep(struct kbase_device *kbdev,
 	prev_count = kbdev->csf.scheduler.pm_active_count;
 	if (!WARN_ON(prev_count == U32_MAX))
 		kbdev->csf.scheduler.pm_active_count++;
+
+	kbdev->pm.backend.runtime_suspend_abort_reason = ABORT_REASON_NONE;
 
 	/* On 0 => 1, make a pm_ctx_active request */
 	if (!prev_count) {
@@ -7475,6 +7497,7 @@ int kbase_csf_scheduler_handle_runtime_suspend(struct kbase_device *kbdev)
 
 		spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
 		kbdev->pm.backend.exit_gpu_sleep_mode = true;
+		kbdev->pm.backend.runtime_suspend_abort_reason = ABORT_REASON_NON_IDLE_CGS;
 		spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
 
 		kbase_csf_scheduler_invoke_tick(kbdev);

@@ -32,7 +32,9 @@
 #include "gl_ics.h"
 #endif
 
-
+#if (CFG_HW_DETECT_REPORT == 1)
+#include "conn_dbg.h"
+#endif
 /*******************************************************************************
  *                              C O N S T A N T S
  *******************************************************************************
@@ -2124,21 +2126,23 @@ void nicCmdEventQueryLteSafeChn(struct ADAPTER *prAdapter,
 	prLteSafeChnInfo = (struct PARAM_GET_CHN_INFO *)
 			prCmdInfo->pvInformationBuffer;
 
-	if (prLteSafeChnInfo->ucRoleIndex >= BSS_P2P_NUM) {
-		ASSERT(FALSE);
-		kalMemFree(prLteSafeChnInfo, VIR_MEM_TYPE,
-				sizeof(struct PARAM_GET_CHN_INFO));
-		return;
-	}
-	prP2pRoleFsmInfo = P2P_ROLE_INDEX_2_ROLE_FSM_INFO(prAdapter,
-			prLteSafeChnInfo->ucRoleIndex);
-	if (prP2pRoleFsmInfo == NULL) {
-		DBGLOG(P2P, ERROR,
-			"Corresponding P2P Role FSM empty: %d.\n",
-			prLteSafeChnInfo->ucRoleIndex);
-		kalMemFree(prLteSafeChnInfo, VIR_MEM_TYPE,
-				sizeof(struct PARAM_GET_CHN_INFO));
-		return;
+	if (!prCmdInfo->fgIsOid) {
+		if (prLteSafeChnInfo->ucRoleIndex >= BSS_P2P_NUM) {
+			ASSERT(FALSE);
+			kalMemFree(prLteSafeChnInfo, VIR_MEM_TYPE,
+					sizeof(struct PARAM_GET_CHN_INFO));
+			return;
+		}
+		prP2pRoleFsmInfo = P2P_ROLE_INDEX_2_ROLE_FSM_INFO(prAdapter,
+				prLteSafeChnInfo->ucRoleIndex);
+		if (prP2pRoleFsmInfo == NULL) {
+			DBGLOG(P2P, ERROR,
+				"Corresponding P2P Role FSM empty: %d.\n",
+				prLteSafeChnInfo->ucRoleIndex);
+			kalMemFree(prLteSafeChnInfo, VIR_MEM_TYPE,
+					sizeof(struct PARAM_GET_CHN_INFO));
+			return;
+		}
 	}
 
 	/* Statistics from FW is valid */
@@ -2161,19 +2165,26 @@ void nicCmdEventQueryLteSafeChn(struct ADAPTER *prAdapter,
 	} else {
 		DBGLOG(NIC, ERROR, "FW's event is NOT valid.\n");
 	}
-	p2pFunProcessAcsReport(prAdapter,
-			prLteSafeChnInfo->ucRoleIndex,
-			prLteSafeChnInfo,
-			&(prP2pRoleFsmInfo->rAcsReqInfo));
-	kalMemFree(prLteSafeChnInfo, VIR_MEM_TYPE,
-			sizeof(struct PARAM_GET_CHN_INFO));
+
+	if (prCmdInfo->fgIsOid) {
+		DBGLOG(NIC, INFO, "oid lteSafeCmd, set oid complete.\n");
+		kalOidComplete(prAdapter->prGlueInfo, prCmdInfo,
+			sizeof(struct PARAM_GET_CHN_INFO), WLAN_STATUS_SUCCESS);
+	} else {
+		p2pFunProcessAcsReport(prAdapter,
+				prLteSafeChnInfo->ucRoleIndex,
+				prLteSafeChnInfo,
+				&(prP2pRoleFsmInfo->rAcsReqInfo));
+		kalMemFree(prLteSafeChnInfo, VIR_MEM_TYPE,
+				sizeof(struct PARAM_GET_CHN_INFO));
+	}
 }
 #endif
 
 void nicEventRddPulseDump(struct ADAPTER *prAdapter,
 			  uint8_t *pucEventBuf)
 {
-	uint16_t u2Idx, u2PulseCnt;
+	uint16_t u2Idx, u2PulseCnt = 0;
 	struct EVENT_WIFI_RDD_TEST *prRddPulseEvent;
 
 	ASSERT(prAdapter);
@@ -2182,8 +2193,20 @@ void nicEventRddPulseDump(struct ADAPTER *prAdapter,
 	prRddPulseEvent = (struct EVENT_WIFI_RDD_TEST *) (
 				  pucEventBuf);
 
-	u2PulseCnt = (prRddPulseEvent->u4FuncLength -
-		      RDD_EVENT_HDR_SIZE) / RDD_ONEPLUSE_SIZE;
+	if (prRddPulseEvent->u4FuncLength >
+		(RX_GET_PACKET_MAX_SIZE(prAdapter)
+			- OFFSET_OF(struct WIFI_EVENT, aucBuffer))) {
+		DBGLOG(INIT, ERROR,
+			"u4FuncLength %u out of valid event length!\n",
+			prRddPulseEvent->u4FuncLength);
+		return;
+	}
+
+	/* underflow check */
+	if (prRddPulseEvent->u4FuncLength >= RDD_EVENT_HDR_SIZE) {
+		u2PulseCnt = (prRddPulseEvent->u4FuncLength -
+			RDD_EVENT_HDR_SIZE) / RDD_ONEPLUSE_SIZE;
+	}
 
 	DBGLOG(INIT, INFO, "[RDD]0x%08x %08d[RDD%d]\n",
 	       prRddPulseEvent->u4Prefix
@@ -3632,6 +3655,13 @@ void nicExtEventPhyIcsRawData(struct ADAPTER *prAdapter,
 				pucEventBuf;
 #endif
 
+	if (prPhyIcsEvent->u4DataLen > MAX_PHY_ICS_DUMP_DATA_CNT) {
+		DBGLOG(RFTEST, ERROR,
+			"u4DataLen %d out of valid event length!\n",
+			prPhyIcsEvent->u4DataLen);
+		return;
+	}
+
 	DBGLOG(RFTEST, INFO,
 	       "u4FuncIndex = %d, u4PktNum = [%d], u4PhyTimestamp = [0x%08x], u4DataLen = [%d]\n",
 	       prPhyIcsEvent->u4FuncIndex,
@@ -3653,7 +3683,7 @@ void nicExtEventPhyIcsRawData(struct ADAPTER *prAdapter,
 #endif
 
     /* endian swap */
-	for (Idxi = 0; Idxi < 256; Idxi++) {
+	for (Idxi = 0; Idxi < MAX_PHY_ICS_DUMP_DATA_CNT; Idxi++) {
 		prPhyIcsEvent->u4Data[Idxi] =
 			((prPhyIcsEvent->u4Data[Idxi] & 0x000000FF) << 24)
 			| ((prPhyIcsEvent->u4Data[Idxi] & 0x0000FF00) << 8)
@@ -3710,7 +3740,11 @@ void nicExtEventICapIQData(struct ADAPTER *prAdapter,
 
 	prIcapInfo = &prAdapter->rIcapInfo;
 	prIQArray = prIcapInfo->prIQArray;
-	ASSERT(prIQArray);
+
+	if (prIQArray == NULL) {
+		DBGLOG(RFTEST, ERROR, "prIQArray is NULL\n");
+		return;
+	}
 
 	/* If we receive the packet which is delivered from
 	 * last time data-capure, we need to drop it.
@@ -3726,6 +3760,20 @@ void nicExtEventICapIQData(struct ADAPTER *prAdapter,
 		DBGLOG(RFTEST, ERROR,
 		       "Packet out of order: Pkt num %d, EventCnt %d\n",
 		       prICapEvent->u4PktNum, prIcapInfo->u4ICapEventCnt);
+		return;
+	}
+
+	if (prICapEvent->u4WFCnt > MAX_ANTENNA_NUM
+		|| prICapEvent->u4WFCnt > MAX_IQ_ARRAY_WF_CNT) {
+		DBGLOG(RFTEST, WARN,
+		       "u4WFCnt is larger than Max Ant Num\n");
+		return;
+	}
+
+	if (prICapEvent->u4SmplCnt >
+		(ICAP_EVENT_DATA_SAMPLE / NUM_OF_CAP_TYPE)) {
+		DBGLOG(RFTEST, WARN,
+		       "u4SmplCnt is larger than buffer size\n");
 		return;
 	}
 
@@ -4690,6 +4738,14 @@ bool nicBeaconTimeoutFilterPolicy(struct ADAPTER *prAdapter,
 			"DFS/Extra CSA is on-going, time:%d, filter out BTO event\n",
 			prBssInfo->CSAParams.u4MaxSwitchTime);
 		return FALSE;
+	}
+#endif
+
+#if (CFG_SUPPORT_802_11BE_MLO == 1) && defined(CFG_SUPPORT_UNIFIED_COMMAND)
+	if (ucBcnTimeoutReason == UNI_ENUM_BCN_PROT_ERROR) {
+		DBGLOG(ML, INFO, "BTO reason for BP error=%d",
+			ucBcnTimeoutReason);
+		return TRUE;
 	}
 #endif
 
@@ -7144,3 +7200,36 @@ void nicCmdEventLpKeepPwrCtrl(struct ADAPTER *prAdapter,
 			       u4QueryInfoLen, WLAN_STATUS_SUCCESS);
 	}
 }
+#if (CFG_HW_DETECT_REPORT == 1)
+void nicEventHwDetectReport(struct ADAPTER *prAdapter,
+		struct WIFI_EVENT *prEvent)
+{
+	struct EVENT_HW_DETECT_REPORT *prEventHwDetectReport;
+	uint8_t str_buf[HW_DETECT_REPORT_STR_TO_NODE_MAX_LEN];
+
+	if (!prAdapter->rWifiVar.fgHwDetectReportEn)
+		return;
+
+	prEventHwDetectReport =
+		(struct EVENT_HW_DETECT_REPORT *)(prEvent->aucBuffer);
+
+	if (snprintf(str_buf, HW_DETECT_REPORT_STR_TO_NODE_MAX_LEN,
+		"[wlan]%s\n", prEventHwDetectReport->aucStrBuffer) < 0) {
+		DBGLOG(NIC, ERROR,
+			"HW Detect Report: %s copy failure\n", str_buf);
+		return;
+	}
+
+	DBGLOG(NIC, INFO, "HW Detect Report: %s\n", str_buf);
+
+	if (prEventHwDetectReport->fgIsReportNode) {
+		/* Report to conninfra node */
+		conn_dbg_add_log(CONN_DBG_LOG_TYPE_HW_ERR, str_buf);
+	}
+
+	if (prAdapter->rWifiVar.fgHwDetectReportEn == 2) {
+		/* Trigger kernel warning */
+		kalSendAeeWarning("WLAN", "HW Detect Report: %s\n", str_buf);
+	}
+}
+#endif

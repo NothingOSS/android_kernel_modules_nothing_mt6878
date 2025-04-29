@@ -572,6 +572,10 @@ void kbase_pm_metrics_start(struct kbase_device *kbdev);
  */
 void kbase_pm_metrics_stop(struct kbase_device *kbdev);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG)
+void kbase_pm_debug_status(struct kbase_device *kbdev);
+#endif /* CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG*/
+
 #if MALI_USE_CSF && defined(KBASE_PM_RUNTIME)
 /**
  * kbase_pm_handle_runtime_suspend - Handle the runtime suspend of GPU

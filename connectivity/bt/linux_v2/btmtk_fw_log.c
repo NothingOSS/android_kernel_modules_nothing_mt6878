@@ -534,7 +534,6 @@ ssize_t btmtk_fops_writefwlog(struct file *filp, const char __user *buf, size_t 
 
 	if (strncmp(i_fwlog_buf, "chip_reset=", strlen("chip_reset=")) == 0) {
 		u8 val = *(i_fwlog_buf + strlen("chip_reset=")) - '0';
-
 		bmain_info->chip_reset_flag = val;
 		BTMTK_INFO("%s: set chip reset flag to %d", __func__, bmain_info->chip_reset_flag);
 		ret = count;
@@ -542,6 +541,10 @@ ssize_t btmtk_fops_writefwlog(struct file *filp, const char __user *buf, size_t 
 	}
 	if (strncmp(i_fwlog_buf, "whole chip reset", strlen("whole chip reset")) == 0) {
 		BTMTK_INFO("whole chip reset start");
+		if (pp_bdev[hci_idx]->assert_reason[0] == '\0') {
+			memset(pp_bdev[hci_idx]->assert_reason, 0, ASSERT_REASON_SIZE);
+			strncpy(pp_bdev[hci_idx]->assert_reason, "FW_LOG_BT trigger whole chip reset", strlen("FW_LOG_BT trigger whole chip reset") + 1);
+		}
 		bmain_info->chip_reset_flag = 1;
 		btmtk_reset_trigger(pp_bdev[hci_idx]);
 		ret = count;
@@ -550,6 +553,10 @@ ssize_t btmtk_fops_writefwlog(struct file *filp, const char __user *buf, size_t 
 
 	if (strncmp(i_fwlog_buf, "subsys chip reset", strlen("subsys chip reset")) == 0) {
 		BTMTK_INFO("subsys chip reset");
+		if (pp_bdev[hci_idx]->assert_reason[0] == '\0') {
+			memset(pp_bdev[hci_idx]->assert_reason, 0, ASSERT_REASON_SIZE);
+			strncpy(pp_bdev[hci_idx]->assert_reason, "FW_LOG_BT trigger subsys chip reset", strlen("FW_LOG_BT trigger subsys chip reset") + 1);
+		}
 		if(bmain_info->hif_hook.trigger_assert)
 			bmain_info->hif_hook.trigger_assert(pp_bdev[hci_idx]);
 		else {
@@ -562,6 +569,10 @@ ssize_t btmtk_fops_writefwlog(struct file *filp, const char __user *buf, size_t 
 
 	if (strncmp(i_fwlog_buf, "direct trigger whole chip reset", strlen("direct trigger whole chip reset")) == 0) {
 		BTMTK_INFO("direct trigger whole chip reset");
+		if (pp_bdev[hci_idx]->assert_reason[0] == '\0') {
+			memset(pp_bdev[hci_idx]->assert_reason, 0, ASSERT_REASON_SIZE);
+			strncpy(pp_bdev[hci_idx]->assert_reason, "FW_LOG_BT direct trigger whole chip reset", strlen("FW_LOG_BT trigger whole chip reset") + 1);
+		}
 		if (bmain_info->hif_hook.whole_reset)
 			bmain_info->hif_hook.whole_reset(pp_bdev[hci_idx]);
 		else

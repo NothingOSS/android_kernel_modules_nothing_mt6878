@@ -186,50 +186,6 @@ void __iomem *gWpeRegBA[WPE_HW_NUM] = {0L};
 unsigned int gWpeRegBase[WPE_HW_NUM] = {0x15200000, 0x15500000, 0x15600000};
 unsigned int gWpeRegBaseAddr[3] = { 0x15220000, 0x15520000, 0x15620000 };
 
-int imgsys_wpe_tfault_callback(int port,
-	dma_addr_t mva, void *data)
-{
-	void __iomem *wpeRegBA = 0L;
-	unsigned larb = 0;
-	unsigned int i =0, j = 0;
-	unsigned int wpeBase = 0;
-	unsigned int engine = 0;
-
-	pr_debug("%s: +\n", __func__);
-
-	/* port: [10:5] larb / larb11: wpe_eis; larb22: wpe_tnr; larb23: wpe_lite */
-	larb = ((port>>5) & 0x3F);
-
-	pr_info("%s: iommu port:0x%x, larb:%d, idx:%d, addr:0x%08lx, +\n", __func__,
-		port, larb, (port & 0x1F), (unsigned long)mva);
-
-	/* iomap registers */
-	engine = (larb == 11) ? REG_MAP_E_WPE_EIS : ((larb == 22) ? REG_MAP_E_WPE_TNR : REG_MAP_E_WPE_LITE);
-	wpeRegBA = gWpeRegBA[engine - REG_MAP_E_WPE_EIS];
-	if (!wpeRegBA) {
-		pr_info("%s: WPE_%d, RegBA=0", __func__, port);
-		return 1;
-	}
-
-	pr_info("%s: ==== Dump WPE_%d, TF port: 0x%x =====",
-		__func__, (engine - REG_MAP_E_WPE_EIS), port);
-
-	//
-	wpeBase = WPE_A_BASE + mtk_imgsys_wpe_base_ofst[(engine - REG_MAP_E_WPE_EIS)];
-	for (j = 0; j < WPE_REG_ARRAY_COUNT; j++) {
-		for (i = wpe_regs[j].str; i <= wpe_regs[j].end; i += 0x10) {
-			pr_info("%s: [0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X", __func__,
-				(unsigned int)(wpeBase + i),
-				(unsigned int)ioread32((void *)(wpeRegBA + i)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x4)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x8)),
-				(unsigned int)ioread32((void *)(wpeRegBA + i + 0xC)));
-		}
-	}
-
-	return 1;
-}
-
 void imgsys_wpe_set_initial_value(struct mtk_imgsys_dev *imgsys_dev)
 {
 	unsigned int hw_idx = 0, ary_idx = 0;
@@ -878,6 +834,58 @@ void imgsys_wpe_debug_cq_dump(struct mtk_imgsys_dev *imgsys_dev,
 
 }
 
+int imgsys_wpe_tfault_callback(int port,
+	dma_addr_t mva, void *data)
+{
+	void __iomem *wpeRegBA = 0L;
+	struct mtk_imgsys_dev *l_imgsys_dev = NULL;
+	unsigned int larb = 0;
+	unsigned int i =0, j = 0, ctl_en = 0;
+	unsigned int wpeBase = 0;
+	unsigned int engine = 0;
+
+	pr_debug("%s: +\n", __func__);
+
+	/* port: [10:5] larb / larb11: wpe_eis; larb22: wpe_tnr; larb23: wpe_lite */
+	larb = ((port>>5) & 0x3F);
+
+	pr_info("%s: iommu port:0x%x, larb:%d, idx:%d, addr:0x%08lx, +\n", __func__,
+		port, larb, (port & 0x1F), (unsigned long)mva);
+
+	/* iomap registers */
+	engine = (larb == 11) ? REG_MAP_E_WPE_EIS : ((larb == 22) ? REG_MAP_E_WPE_TNR : REG_MAP_E_WPE_LITE);
+	wpeRegBA = gWpeRegBA[engine - REG_MAP_E_WPE_EIS];
+	if (!wpeRegBA) {
+		pr_info("%s: WPE_%d, RegBA=0", __func__, port);
+		return 1;
+	}
+
+	pr_info("%s: ==== Dump WPE_%d, TF port: 0x%x =====",
+		__func__, (engine - REG_MAP_E_WPE_EIS), port);
+
+	//
+	wpeBase = WPE_A_BASE + mtk_imgsys_wpe_base_ofst[(engine - REG_MAP_E_WPE_EIS)];
+	for (j = 0; j < WPE_REG_ARRAY_COUNT; j++) {
+		for (i = wpe_regs[j].str; i <= wpe_regs[j].end; i += 0x10) {
+			pr_info("%s: [0x%08X] 0x%08X 0x%08X 0x%08X 0x%08X", __func__,
+				(unsigned int)(wpeBase + i),
+				(unsigned int)ioread32((void *)(wpeRegBA + i)),
+				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x4)),
+				(unsigned int)ioread32((void *)(wpeRegBA + i + 0x8)),
+				(unsigned int)ioread32((void *)(wpeRegBA + i + 0xC)));
+		}
+	}
+
+	//UFO
+	ctl_en = (unsigned int)ioread32((void *)(wpeRegBA + 0x4));
+	if (ctl_en & 0x400) {
+		imgsys_wpe_debug_ufo_dump(l_imgsys_dev, wpeRegBA);
+		imgsys_wpe_debug_ufo_dump(l_imgsys_dev, wpeRegBA);
+	}
+
+
+	return 1;
+}
 
 void imgsys_wpe_debug_dump(struct mtk_imgsys_dev *imgsys_dev,
 							unsigned int engine)

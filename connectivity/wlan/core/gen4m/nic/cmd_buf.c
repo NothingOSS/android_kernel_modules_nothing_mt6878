@@ -218,7 +218,7 @@ struct CMD_INFO *cmdBufAllocateCmdInfo(struct ADAPTER
 	}
 
 	if (prCmdInfo) {
-		DBGLOG(MEM, TRACE,
+		DBGLOG(MEM, LOUD,
 		       "CMD[0x%p] allocated! LEN[%04u], Rest[%u]\n",
 		       prCmdInfo, u4Length, prAdapter->rFreeCmdList.u4NumElem);
 

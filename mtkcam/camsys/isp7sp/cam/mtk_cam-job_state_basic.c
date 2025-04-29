@@ -216,7 +216,8 @@ static int _is_next_sensor_applicable(struct mtk_cam_job_state *s)
 
 static int _is_next_isp_applicable(struct mtk_cam_job_state *s)
 {
-	return is_isp_ge_processing(mtk_cam_job_state_get(s, ISP_STATE));
+	return is_isp_ge_processing(mtk_cam_job_state_get(s, ISP_STATE)) &&
+		!is_isp_aborted(mtk_cam_job_state_get(s, ISP_STATE));
 }
 
 static int _is_sensor_set(struct mtk_cam_job_state *s)

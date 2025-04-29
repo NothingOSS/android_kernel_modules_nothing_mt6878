@@ -148,6 +148,9 @@ struct RESET_STRUCT {
 	struct notifier_block pm_nb;
 	u_int8_t is_suspend;
 	struct reset_pending_req *pending_req;
+
+	/* used in reset trigger function to avoid system entering suspend */
+	KAL_WAKE_LOCK_T *trigger_wakelock;
 #endif
 };
 
@@ -168,6 +171,7 @@ enum ENUM_RST_MSG {
 #if CFG_CHIP_RESET_SUPPORT
 #if CFG_MTK_ANDROID_WMT
 extern void update_driver_reset_status(uint8_t fgIsResetting);
+extern void update_driver_l0_reset_status(uint8_t fgIsL0Resetting);
 extern int32_t get_wifi_process_status(void);
 extern int32_t get_wifi_powered_status(void);
 extern int wifi_reset_start(void);
@@ -187,7 +191,7 @@ extern enum COREDUMP_SOURCE_TYPE g_Coredump_source;
 #if CFG_CHIP_RESET_HANG
 extern u_int8_t fgIsResetHangState;
 #endif
-extern uint8_t g_IsNeedWaitWholeChipRst;
+extern uint8_t g_IsNeedWaitAERDump;
 #endif
 /*******************************************************************************
  *                           P R I V A T E   D A T A
@@ -235,6 +239,7 @@ do { \
  */
 #if CFG_CHIP_RESET_SUPPORT
 extern uint64_t u8ResetTime;
+extern u_int8_t g_IsWfsysResetOnFail;
 extern u_int8_t fgSimplifyResetFlow;
 extern char *g_reason;
 #endif
@@ -249,6 +254,7 @@ void glSetRstReason(enum _ENUM_CHIP_RESET_REASON_TYPE_T eReason);
 int glGetRstReason(void);
 
 u_int8_t kalIsResetting(void);
+u_int8_t kalIsResetOnEnd(void);
 u_int8_t kalIsRstPreventFwOwn(void);
 
 void glResetUpdateFlag(u_int8_t fgIsResetting);

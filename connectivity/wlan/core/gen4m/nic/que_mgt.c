@@ -4535,12 +4535,108 @@ static void qmLogDropFallBehind(struct ADAPTER *prAdapter,
 		       u2WinStart, u2WinEnd, u2IpId, 0, u2BarSSN, u8Count);
 }
 
+static
+struct UDP_HEADER *qmGetUdpPkt(uint8_t *pucData, uint16_t u2PacketLen,
+		uint16_t *pUdpLen)
+{
+	uint16_t u2EtherType = 0;
+	uint8_t *pucEthBody = NULL;
+	struct UDP_HEADER *pUdp = NULL;
+	uint32_t ipHLen = 0;
+	uint16_t u2UdpLen = 0;
+
+	/* check if pkt at least have eth/ip/udp header to read */
+	if (u2PacketLen < (ETHER_HEADER_LEN + IP_HEADER_LEN + UDP_HDR_LEN) ||
+		u2PacketLen > ETHER_MAX_PKT_SZ)
+		goto end;
+
+	u2EtherType = (pucData[ETH_TYPE_LEN_OFFSET] << 8) |
+		(pucData[ETH_TYPE_LEN_OFFSET + 1]);
+	if (u2EtherType != ETH_P_IPV4)
+		goto end;
+
+	/* check ip version and ip proto */
+	pucEthBody = &pucData[ETHER_HEADER_LEN];
+	if (((pucEthBody[0] & IPVH_VERSION_MASK) >>
+		IPVH_VERSION_OFFSET) != IPVERSION)
+		goto end;
+	if (pucEthBody[IP_PROTO_HLEN] != IP_PRO_UDP)
+		goto end;
+
+	/* get actual ip header len and check if udp header safe to read */
+	ipHLen = (pucEthBody[0] & 0x0F) << 2;
+	if (unlikely(u2PacketLen < ETHER_HEADER_LEN + ipHLen + UDP_HDR_LEN))
+		goto end;
+
+	/* check if udp payload safe to read */
+	pUdp = (struct UDP_HEADER *)&pucEthBody[ipHLen];
+	u2UdpLen = NTOHS(pUdp->u2Length);
+	if (unlikely(u2PacketLen < ETHER_HEADER_LEN + ipHLen + u2UdpLen)) {
+		pUdp = NULL;
+		u2UdpLen = 0;
+		goto end;
+	}
+end:
+	if (pUdpLen)
+		*pUdpLen = u2UdpLen;
+	return pUdp;
+}
+
+static
+struct DHCP_PROTOCOL *qmGetDhcpPkt(uint8_t *pucData, uint16_t u2PacketLen,
+	u_int8_t fgFromServer, uint16_t *pDhcpLen)
+{
+	struct UDP_HEADER *pucUdpPkt = NULL;
+	uint16_t udpLen = 0;
+	uint16_t dhcpLen = 0;
+	uint16_t u2UdpDstPort;
+	uint16_t u2UdpSrcPort;
+	struct DHCP_PROTOCOL *prDhcp = NULL;
+	uint32_t u4DhcpMagicCode = 0;
+
+	pucUdpPkt = qmGetUdpPkt(pucData, u2PacketLen, &udpLen);
+	if (!pucUdpPkt)
+		goto end;
+
+	/* check udp port is dhcp */
+	u2UdpDstPort = NTOHS(pucUdpPkt->u2DstPort);
+	u2UdpSrcPort = NTOHS(pucUdpPkt->u2SrcPort);
+	if (fgFromServer &&
+	    (u2UdpSrcPort != UDP_PORT_DHCPS || u2UdpDstPort != UDP_PORT_DHCPC))
+		goto end;
+
+	if (!fgFromServer &&
+	    (u2UdpSrcPort != UDP_PORT_DHCPC || u2UdpDstPort != UDP_PORT_DHCPS))
+		goto end;
+
+	if (udpLen < UDP_HDR_LEN + sizeof(struct DHCP_PROTOCOL))
+		goto end;
+
+	prDhcp = (struct DHCP_PROTOCOL *)pucUdpPkt->aucData;
+	u4DhcpMagicCode = NTOHL(prDhcp->u4MagicCookie);
+	if (u4DhcpMagicCode != DHCP_MAGIC_NUMBER) {
+		DBGLOG(INIT, WARN, "dhcp wrong magic number, magic code: %d\n",
+			u4DhcpMagicCode);
+		prDhcp = NULL;
+		goto end;
+	}
+
+	dhcpLen = udpLen - UDP_HDR_LEN;
+
+	DBGLOG(QM, LOUD, "Len:%u dhcpLen:%u\n", u2PacketLen, dhcpLen);
+end:
+	if (pDhcpLen)
+		*pDhcpLen = dhcpLen;
+
+	return prDhcp;
+}
+
 #if CFG_SUPPORT_DHCP_RESET_BA_WINDOW
 u_int8_t qmIsBaNeedReset(struct ADAPTER *prAdapter, struct SW_RFB *prSwRfb)
 {
 	u_int8_t fgRet = FALSE;
 	uint8_t *pucData;
-	struct BOOTP_PROTOCOL *prBootp;
+	struct BOOTP_PROTOCOL *prBootp = NULL;
 
 	pucData = (uint8_t *)prSwRfb->pvHeader;
 	if (!pucData)
@@ -4844,12 +4940,25 @@ static struct SW_RFB *getReorderingIndexCache(
 	uint16_t i;
 	const struct QUE *prReorderQue;
 	struct SW_RFB **prCacheIndex = prReorderQueParm->prCacheIndex;
+	struct SW_RFB *prRetSwRfb;
 	uint16_t u2WinStart = prReorderQueParm->u2WinStart;
+	uint16_t u2SSN;
 
 	for (i = prSwRfb->u2SSN;
 	     SEQ_SMALLER(u2WinStart, i) || u2WinStart == i; SEQ_DEC(i)) {
-		if (prCacheIndex[i & HALF_SEQ_MASK])
-			return prCacheIndex[i & HALF_SEQ_MASK];
+		prRetSwRfb = prCacheIndex[i & HALF_SEQ_MASK];
+		if (!prRetSwRfb)
+			continue;
+
+		u2SSN = prRetSwRfb->u2SSN & HALF_SEQ_MASK;
+		if (u2SSN == (i & HALF_SEQ_MASK))
+			return prRetSwRfb;
+
+		/* clear incorrect SwRfb cache */
+		DBGLOG(QM, WARN,
+		       "QM: incorrect SwRfb cache 0x%x != 0x%x\n",
+		       prRetSwRfb->u2SSN, i);
+		clearReorderingIndexCache(prReorderQueParm, prRetSwRfb);
 	}
 #endif
 	/* Not found, fallback */
@@ -7672,6 +7781,13 @@ void qmHandleEventBssAbsencePresence(struct ADAPTER *prAdapter,
 
 	prEventBssStatus = (struct EVENT_BSS_ABSENCE_PRESENCE *) (
 		prEvent->aucBuffer);
+
+	if (!IS_BSS_INDEX_VALID(prEventBssStatus->ucBssIndex)) {
+		DBGLOG(QM, WARN, "NAF:BSS IDX is invalid: %u\n",
+			prEventBssStatus->ucBssIndex);
+		return;
+	}
+
 	prBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter,
 		prEventBssStatus->ucBssIndex);
 	if (!prBssInfo) {
@@ -9434,100 +9550,6 @@ uint8_t *qmGetArpPkt(uint8_t *pucData, uint16_t u2PacketLen)
 
 end:
 	return pucEthBody;
-}
-
-struct UDP_HEADER *qmGetUdpPkt(uint8_t *pucData, uint16_t u2PacketLen,
-		uint16_t *pUdpLen)
-{
-	uint16_t u2EtherType = 0;
-	uint8_t *pucEthBody = NULL;
-	struct UDP_HEADER *pUdp = NULL;
-	uint32_t ipHLen = 0;
-	uint16_t u2UdpLen = 0;
-
-	/* check if pkt at least have eth/ip/udp header to read */
-	if (u2PacketLen < (ETHER_HEADER_LEN + IP_HEADER_LEN + UDP_HDR_LEN) ||
-		u2PacketLen > ETHER_MAX_PKT_SZ)
-		goto end;
-
-	u2EtherType = (pucData[ETH_TYPE_LEN_OFFSET] << 8) |
-		(pucData[ETH_TYPE_LEN_OFFSET + 1]);
-	if (u2EtherType != ETH_P_IPV4)
-		goto end;
-
-	/* check ip version and ip proto */
-	pucEthBody = &pucData[ETHER_HEADER_LEN];
-	if (((pucEthBody[0] & IPVH_VERSION_MASK) >>
-		IPVH_VERSION_OFFSET) != IPVERSION)
-		goto end;
-	if (pucEthBody[IP_PROTO_HLEN] != IP_PRO_UDP)
-		goto end;
-
-	/* get actual ip header len and check if udp header safe to read */
-	ipHLen = (pucEthBody[0] & 0x0F) << 2;
-	if (unlikely(u2PacketLen < ETHER_HEADER_LEN + ipHLen + UDP_HDR_LEN))
-		goto end;
-
-	/* check if udp payload safe to read */
-	pUdp = (struct UDP_HEADER *)&pucEthBody[ipHLen];
-	u2UdpLen = NTOHS(pUdp->u2Length);
-	if (unlikely(u2PacketLen < ETHER_HEADER_LEN + ipHLen + u2UdpLen)) {
-		pUdp = NULL;
-		u2UdpLen = 0;
-		goto end;
-	}
-end:
-	if (pUdpLen)
-		*pUdpLen = u2UdpLen;
-	return pUdp;
-}
-
-struct DHCP_PROTOCOL *qmGetDhcpPkt(uint8_t *pucData, uint16_t u2PacketLen,
-	u_int8_t fgFromServer, uint16_t *pDhcpLen)
-{
-	struct UDP_HEADER *pucUdpPkt = NULL;
-	uint16_t udpLen = 0;
-	uint16_t dhcpLen = 0;
-	uint16_t u2UdpDstPort;
-	uint16_t u2UdpSrcPort;
-	struct DHCP_PROTOCOL *prDhcp = NULL;
-	uint32_t u4DhcpMagicCode = 0;
-
-	pucUdpPkt = qmGetUdpPkt(pucData, u2PacketLen, &udpLen);
-	if (!pucUdpPkt)
-		goto end;
-
-	/* check udp port is dhcp */
-	u2UdpDstPort = NTOHS(pucUdpPkt->u2DstPort);
-	u2UdpSrcPort = NTOHS(pucUdpPkt->u2SrcPort);
-	if (fgFromServer &&
-	    (u2UdpSrcPort != UDP_PORT_DHCPS || u2UdpDstPort != UDP_PORT_DHCPC))
-		goto end;
-
-	if (!fgFromServer &&
-	    (u2UdpSrcPort != UDP_PORT_DHCPC || u2UdpDstPort != UDP_PORT_DHCPS))
-		goto end;
-
-	if (udpLen < UDP_HDR_LEN + sizeof(struct DHCP_PROTOCOL))
-		goto end;
-
-	prDhcp = (struct DHCP_PROTOCOL *)pucUdpPkt->aucData;
-	u4DhcpMagicCode = NTOHL(prDhcp->u4MagicCookie);
-	if (u4DhcpMagicCode != DHCP_MAGIC_NUMBER) {
-		DBGLOG(INIT, WARN, "dhcp wrong magic number, magic code: %d\n",
-			u4DhcpMagicCode);
-		prDhcp = NULL;
-		goto end;
-	}
-
-	dhcpLen = udpLen - UDP_HDR_LEN;
-
-	DBGLOG(QM, LOUD, "Len:%u dhcpLen:%u\n", u2PacketLen, dhcpLen);
-end:
-	if (pDhcpLen)
-		*pDhcpLen = dhcpLen;
-
-	return prDhcp;
 }
 
 u_int8_t qmArpMonitorIsIOTIssue(struct ADAPTER *prAdapter,

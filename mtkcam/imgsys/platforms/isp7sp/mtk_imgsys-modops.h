@@ -33,13 +33,13 @@ const struct module_ops imgsys_isp7_modules[] = {
 	},
 	[IMGSYS_MOD_LTRAW] = {
 		.module_id = IMGSYS_MOD_LTRAW,
-		.init = imgsys_traw_set_initial_value,
+		.init = imgsys_ltraw_set_initial_value,
 		.set = imgsys_ltraw_set_initial_value_hw,
 		.updatecq = NULL,
 		.cmdq_set = imgsys_ltraw_cmdq_set_initial_value_hw,
 		.dump = imgsys_traw_debug_dump,
 		.done_chk = imgsys_traw_done_chk,
-		.uninit = imgsys_traw_uninit,
+		.uninit = imgsys_ltraw_uninit,
 	},
 	[IMGSYS_MOD_DIP] = {
 		.module_id = IMGSYS_MOD_DIP,

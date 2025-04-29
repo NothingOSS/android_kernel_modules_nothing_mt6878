@@ -2820,7 +2820,7 @@ static struct subdrv_static_ctx static_ctx = {
 	.frame_length_max = 0xFFF8,
 	.ae_effective_frame = 2,
 	.frame_time_delay_frame = 3,
-	.start_exposure_offset = 5500000,
+	.start_exposure_offset = 6400000,
 
 	.pdaf_type = PDAF_SUPPORT_CAMSV_DUALPD,
 	.hdr_type = HDR_SUPPORT_STAGGER_FDOL|HDR_SUPPORT_DCG|HDR_SUPPORT_LBMF,

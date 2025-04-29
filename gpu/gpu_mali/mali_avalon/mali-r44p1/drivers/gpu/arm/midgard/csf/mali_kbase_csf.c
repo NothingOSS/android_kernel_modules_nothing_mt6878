@@ -3390,10 +3390,13 @@ void kbase_csf_interrupt(struct kbase_device *kbdev, u32 val)
 #endif /* CONFIG_MALI_MTK_IRQ_TRACE */
 	if (deferred_handling_glb_idle_irq) {
 		unsigned long flags;
+		bool invoke_pm_state_machine;
 
 		kbase_csf_scheduler_spin_lock(kbdev, &flags);
-		kbase_csf_scheduler_process_gpu_idle_event(kbdev);
+		invoke_pm_state_machine = kbase_csf_scheduler_process_gpu_idle_event(kbdev);
 		kbase_csf_scheduler_spin_unlock(kbdev, flags);
+		if (unlikely(invoke_pm_state_machine))
+			kbase_pm_update_state(kbdev);
 	}
 #if IS_ENABLED(CONFIG_MALI_MTK_IRQ_TRACE)
 		mtk_debug_irq_trace_record_end(KBASE_IRQ_JOB, 4);

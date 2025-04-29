@@ -105,6 +105,21 @@ enum kbase_shader_core_state {
 };
 
 /**
+ * enum kbase_pm_runtime_suspend_abort_reason - Reason why runtime suspend was aborted
+ *                                              after the wake up of MCU.
+ *
+ * @ABORT_REASON_NONE:          Not aborted
+ * @ABORT_REASON_DB_MIRROR_IRQ: Runtime suspend was aborted due to DB_MIRROR irq.
+ * @ABORT_REASON_NON_IDLE_CGS:  Runtime suspend was aborted as CSGs were detected as non-idle after
+ *                              their suspension.
+ */
+enum kbase_pm_runtime_suspend_abort_reason {
+	ABORT_REASON_NONE,
+	ABORT_REASON_DB_MIRROR_IRQ,
+	ABORT_REASON_NON_IDLE_CGS
+};
+
+/**
  * struct kbasep_pm_metrics - Metrics data collected for use by the power
  *                            management framework.
  *
@@ -390,6 +405,12 @@ union kbase_pm_policy_data {
  *				 immediately after the MCU halt and cleared
  *				 after the L2 cache power down. MCU can't be
  *				 re-enabled whilst the flag is set.
+ * @runtime_suspend_abort_reason: Tracks if the runtime suspend was aborted,
+ *                                after the wake up of MCU, due to the DB_MIRROR irq
+ *                                or non-idle CSGs. Tracking is done to avoid
+ *                                redundant transition of MCU to sleep state after the
+ *                                abort of runtime suspend and before the resumption
+ *                                of scheduling.
  * @in_reset: True if a GPU is resetting and normal power manager operation is
  *            suspended
  * @partial_shaderoff: True if we want to partial power off shader cores,
@@ -510,6 +531,7 @@ struct kbase_pm_backend_data {
 	bool gpu_idled;
 	bool gpu_wakeup_override;
 	bool db_mirror_interrupt_enabled;
+	enum kbase_pm_runtime_suspend_abort_reason runtime_suspend_abort_reason;
 #endif
 	bool l2_force_off_after_mcu_halt;
 #endif

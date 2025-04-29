@@ -226,7 +226,8 @@ rateGetRateSetFromIEs(
 	*pu2BSSBasicRateSet = u2BSSBasicRateSet;
 	*pfgIsUnknownBSSBasicRate = fgIsUnknownBSSBasicRate;
 
-	DBGLOG(RLM, TRACE, "OP rate:%d, Basic rate:%d, Unknown rate:%d\n",
+	DBGLOG_LIMITED(RLM, TRACE,
+		"OP rate:%d, Basic rate:%d, Unknown rate:%d\n",
 		u2OperationalRateSet,
 		u2BSSBasicRateSet,
 		fgIsUnknownBSSBasicRate);

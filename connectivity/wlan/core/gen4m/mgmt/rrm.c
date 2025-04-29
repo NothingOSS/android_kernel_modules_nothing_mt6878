@@ -213,8 +213,11 @@ void rrmFreeMeasurementResources(struct ADAPTER *prAdapter,
 	while (!LINK_IS_EMPTY(prReportLink)) {
 		LINK_REMOVE_HEAD(prReportLink, prReportEntry,
 				 struct RM_MEASURE_REPORT_ENTRY *);
-		if (!prReportEntry)
-			continue;
+
+		if (!prReportEntry) {
+			DBGLOG(RRM, ERROR, "prReportEntry is NULL!!\n");
+			break;
+		}
 
 		if (prReportEntry->pucMeasReport)
 			kalMemFree(prReportEntry->pucMeasReport,

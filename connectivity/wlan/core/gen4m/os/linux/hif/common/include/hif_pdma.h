@@ -1274,6 +1274,12 @@ void halZeroCopyPathDumpTx(struct GL_HIF_INFO *prHifInfo,
 void halZeroCopyPathDumpRx(struct GL_HIF_INFO *prHifInfo,
 		       struct RTMP_RX_RING *prRxRing,
 		       uint32_t u4Idx, uint32_t u4DumpLen);
+#if IS_ENABLED(CFG_MTK_WIFI_CONNV3_SUPPORT)
+u_int8_t kalDevRegReadViaBT(struct GLUE_INFO *prGlueInfo,
+				uint32_t u4Register, uint32_t *pu4Value);
+u_int8_t kalDevRegWriteViaBT(struct GLUE_INFO *prGlueInfo,
+				uint32_t u4Register, uint32_t u4Value);
+#endif
 
 #if CFG_MTK_WIFI_SW_EMI_RING
 struct HIF_MEM *halGetRsvEmi(struct GL_HIF_INFO *prHifInfo);

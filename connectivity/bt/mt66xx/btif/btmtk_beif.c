@@ -613,7 +613,13 @@ int beif_dump_rx_last_data(unsigned int len)
 #ifndef BEIF_CTP_LOAD
 static int beif_rx_thread(void *p_data)
 {
-	pr_info("beif_rx_thread starts\n");
+	struct sched_param sch_param;
+	int ret;
+
+	sch_param.sched_priority = MAX_RT_PRIO - 10;
+	ret = sched_setscheduler(current, SCHED_RR, &sch_param);
+	pr_info("%s prio = %d, ret = %d\n", __func__, sch_param.sched_priority, ret);
+
 	while (1) {
 		wait_for_completion_interruptible(&rx_comp);
 		if (kthread_should_stop()) {
@@ -648,7 +654,6 @@ static int beif_rx_init(void)
 		return -1;
 	}
 
-	sched_set_fifo(p_task);
 	wake_up_process(p_task);
 #endif
 	return ret;

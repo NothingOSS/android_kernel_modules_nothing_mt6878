@@ -1170,7 +1170,6 @@ void scanResetBssDesc(struct ADAPTER *prAdapter,
 		      struct BSS_DESC *prBssDesc);
 
 /* Check if VHT IE filled in Epigram IE */
-void scanCheckEpigramVhtIE(uint8_t *pucBuf, struct BSS_DESC *prBssDesc);
 void scanParseVHTCapIE(uint8_t *pucIE, struct BSS_DESC *prBssDesc);
 void scanParseVHTOpIE(uint8_t *pucIE, struct BSS_DESC *prBssDesc);
 

@@ -100,4 +100,9 @@ extern struct connfem_epaelna_flag_tbl_entry* cfm_epaelna_flags_subsys_find(
 extern struct connfem_epaelna_subsys_cb *cfm_epaelna_flags_subsys_cb_get(
 		enum connfem_subsys subsys);
 
+extern int cfm_epaelna_flags_config_get(void* ctx,
+		struct cfm_epaelna_flags_config** flags_config);
+
+extern int cfm_epaelna_available_get(void* ctx, bool *avail);
+
 #endif /* __CONNFEM_EPAELNA_H__ */

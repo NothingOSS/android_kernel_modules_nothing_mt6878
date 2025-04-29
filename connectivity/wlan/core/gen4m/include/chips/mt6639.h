@@ -161,11 +161,11 @@ void mt6639_icapDownVcoreClockRate(void);
 #if defined(_HIF_PCIE)
 void mt6639_dumpWfsyscpupcr(struct ADAPTER *ad);
 void mt6639_DumpBusHangCr(struct ADAPTER *ad);
-void mt6639_dumpPcGprLog(struct ADAPTER *ad);
-void mt6639_dumpN45CoreReg(struct ADAPTER *ad);
-void mt6639_dumpWfTopReg(struct ADAPTER *ad);
+void mt6639_dumpPcGprLog(struct ADAPTER *ad, u_int8_t fgIsDumpViaBt);
+void mt6639_dumpN45CoreReg(struct ADAPTER *ad, u_int8_t fgIsDumpViaBt);
+void mt6639_dumpWfTopReg(struct ADAPTER *ad, u_int8_t fgIsDumpViaBt);
 void mt6639_dumpHostVdnrTimeoutInfo(struct ADAPTER *ad);
-void mt6639_dumpWfBusReg(struct ADAPTER *ad);
+void mt6639_dumpWfBusReg(struct ADAPTER *ad, u_int8_t fgIsDumpViaBt);
 uint8_t mt6639_dumpCbtopReg(struct ADAPTER *ad);
 
 #if IS_ENABLED(CFG_MTK_WIFI_CONNV3_SUPPORT)

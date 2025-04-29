@@ -1933,6 +1933,13 @@ uint32_t nicUniCmdEventQueryNicCapabilityV2(struct ADAPTER *ad,
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return WLAN_STATUS_FAILURE;
+	}
+
 	/* copy tag to legacy event */
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -7459,59 +7466,6 @@ uint32_t nicUniCmdSendVnf(struct ADAPTER *ad,
 }
 #endif /* CFG_VOLT_INFO */
 
-#if (CFG_HW_DETECT_REPORT == 1)
-void nicUniEventHwDetectReport(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
-{
-#define HW_DETECT_REPORT_STR_TO_NODE_MAX_LEN	(HW_DETECT_REPORT_STR_MAX_LEN+7)
-	int32_t tags_len;
-	uint8_t *tag;
-	uint16_t offset = 0;
-	uint32_t fixed_len = sizeof(struct UNI_EVENT_HW_DETECT_REPORT);
-	uint32_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
-	uint8_t *data = GET_UNI_EVENT_DATA(evt);
-	uint32_t fail_cnt = 0;
-	uint8_t	str_buf[HW_DETECT_REPORT_STR_TO_NODE_MAX_LEN];
-
-	if (!ad->rWifiVar.fgHwDetectReportEn)
-		return;
-
-	tags_len = data_len - fixed_len;
-	tag = data + fixed_len;
-	TAG_FOR_EACH(tag, tags_len, offset) {
-		switch (TAG_ID(tag)) {
-		case UNI_EVENT_HW_DETECT_REPORT_BASIC: {
-			struct UNI_EVENT_HW_DETECT_REPORT_PARAM
-				*hw_detect_report =
-				(struct UNI_EVENT_HW_DETECT_REPORT_PARAM *)tag;
-
-			if (snprintf(str_buf,
-				HW_DETECT_REPORT_STR_TO_NODE_MAX_LEN,
-				"[wlan]%s\n",
-				hw_detect_report->aucStrBuffer) < 0) {
-				DBGLOG(NIC, ERROR,
-			       "HW Detect Report: %s copy failure\n", str_buf);
-				return;
-			}
-
-			DBGLOG(NIC, INFO,
-				"HW Detect Report: %s\n", str_buf);
-			conn_dbg_add_log(CONN_DBG_LOG_TYPE_HW_ERR,
-				str_buf);
-
-			kalSendAeeWarning("WLAN", "HW Detect Report: %s\n",
-				str_buf);
-		}
-			break;
-		default:
-			fail_cnt++;
-			ASSERT(fail_cnt < MAX_UNI_EVENT_FAIL_TAG_COUNT)
-			DBGLOG(NIC, WARN, "invalid tag = %d\n", TAG_ID(tag));
-			break;
-		}
-	}
-}
-#endif /* CFG_HW_DETECT_REPORT */
-
 #if CFG_FAST_PATH_SUPPORT
 uint32_t nicUniCmdFastPath(struct ADAPTER *ad,
 		struct WIFI_UNI_SETQUERY_INFO *info)
@@ -7652,6 +7606,13 @@ void nicUniEventAssertDump(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t *dump = NULL;
 	uint32_t len = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -7987,6 +7948,17 @@ void nicRxProcessUniEventPacket(struct ADAPTER *prAdapter,
 	prChipInfo = prAdapter->chip_info;
 	prEvent = (struct WIFI_UNI_EVENT *)
 			(prSwRfb->pucRecvBuff + prChipInfo->rxd_size);
+
+	if (prEvent->u2PacketLength > RX_GET_PACKET_MAX_SIZE(prAdapter)
+		|| prEvent->u2PacketLength <
+			(sizeof(struct WIFI_UNI_EVENT) + TAG_HDR_LEN)) {
+		DBGLOG(NIC, ERROR,
+			"Invalid RX uni event: ID[0x%02X] SEQ[%u] LEN[%u] OPT[0x%x]\n",
+			prEvent->ucEID, prEvent->ucSeqNum,
+			prEvent->u2PacketLength, prEvent->ucOption);
+		nicRxReturnRFB(prAdapter, prSwRfb);
+		return;
+	}
 
 	if (prEvent->ucEID != UNI_EVENT_ID_FW_LOG_2_HOST) {
 		DBGLOG(NIC, TRACE,
@@ -8454,6 +8426,13 @@ void nicUniEventQueryCnmInfo(struct ADAPTER
 	struct PARAM_GET_CNM_T legacy = {0};
 	uint8_t i, j;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -8536,6 +8515,13 @@ void nicUniEventPhyIcsRawData(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint16_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -8583,6 +8569,13 @@ void nicUniEventRfTestHandler(struct ADAPTER
 	ASSERT(prAteOps);
 #endif
 	prIcapInfo = &prAdapter->rIcapInfo;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -8665,10 +8658,10 @@ void nicUniEventMibInfo(struct ADAPTER *ad,
 	struct CMD_INFO *prCmdInfo, uint8_t *pucEventBuf)
 {
 	uint8_t *tag;
+	uint16_t tags_len;
 	uint16_t fixed_len = sizeof(struct UNI_EVENT_MIB_INFO);
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(pucEventBuf);
 	uint8_t *data = GET_UNI_EVENT_DATA(pucEventBuf);
-	uint16_t tags_len = data_len - fixed_len;
 	uint16_t offset = 0;
 	uint8_t i = 0;
 	uint16_t u2BandIdx;
@@ -8790,6 +8783,14 @@ void nicUniEventMibInfo(struct ADAPTER *ad,
 			&prMibStats->au4TxDdlmtRng[i];
 	}
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
+	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
 		if (i >= MAX_MIB_TAG_CNT)
@@ -9061,12 +9062,20 @@ void nicUniEventAllStatsOneCmd(struct ADAPTER
 	/* staStats: prGlueInfo->prAdapter->rQueryStaStatistics[ucBssIndex] */
 	/* Stats: prAdapter->rStat */
 	uint8_t *tag;
+	uint16_t tags_len;
 	uint16_t fixed_len = sizeof(struct UNI_EVENT_STATISTICS);
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(pucEventBuf);
 	uint8_t *data = GET_UNI_EVENT_DATA(pucEventBuf);
-	uint16_t tags_len = data_len - fixed_len;
 	uint16_t offset = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
+	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
 		DBGLOG(RX, TRACE, "tag=%u, tag->u2Length=%u\n",
@@ -9589,12 +9598,20 @@ void nicUniEventScanDone(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
+	u_int8_t fgIsValidScanDone = TRUE;
 	int i;
 	struct UNI_EVENT_SCAN_DONE *scan_done;
 	struct EVENT_SCAN_DONE legacy = {0};
 
 	scan_done = (struct UNI_EVENT_SCAN_DONE *) data;
 	legacy.ucSeqNum = scan_done->ucSeqNum;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -9605,7 +9622,12 @@ void nicUniEventScanDone(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 		case UNI_EVENT_SCAN_DONE_TAG_BASIC: {
 			struct UNI_EVENT_SCAN_DONE_BASIC *basic =
 				(struct UNI_EVENT_SCAN_DONE_BASIC *) tag;
-
+			/* Event Type TAG_BASIC should have 12 bytes contents.*/
+			if (basic->u2Length !=
+				sizeof(struct UNI_EVENT_SCAN_DONE_BASIC)) {
+				fgIsValidScanDone = FALSE;
+				break;
+			}
 			legacy.ucCompleteChanCount = basic->ucCompleteChanCount;
 			legacy.ucCurrentState = basic->ucCurrentState;
 			legacy.ucScanDoneVersion = basic->ucScanDoneVersion;
@@ -9616,7 +9638,14 @@ void nicUniEventScanDone(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 		case UNI_EVENT_SCAN_DONE_TAG_SPARSECHNL: {
 			struct UNI_EVENT_SCAN_DONE_SPARSECHNL *sparse =
 				(struct UNI_EVENT_SCAN_DONE_SPARSECHNL *) tag;
-
+			/* Event Type TAG_SPARSECHNL should
+			 * have 8 bytes contents.
+			 */
+			if (sparse->u2Length !=
+				sizeof(struct UNI_EVENT_SCAN_DONE_SPARSECHNL)) {
+				fgIsValidScanDone = FALSE;
+				break;
+			}
 			legacy.ucSparseChannelValid =
 				sparse->ucSparseChannelValid;
 			legacy.rSparseChannel.ucBand = sparse->ucBand;
@@ -9657,7 +9686,12 @@ void nicUniEventScanDone(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 			struct UNI_EVENT_SCAN_DONE_NLO *nlo =
 				(struct UNI_EVENT_SCAN_DONE_NLO *) tag;
 			struct EVENT_SCHED_SCAN_DONE sched;
-
+			/* Event Type NLO should have 8 bytes contents. */
+			if (nlo->u2Length
+				!= sizeof(struct UNI_EVENT_SCAN_DONE_NLO)) {
+				fgIsValidScanDone = FALSE;
+				break;
+			}
 			sched.ucStatus = nlo->ucStatus;
 			sched.ucSeqNum = legacy.ucSeqNum;
 
@@ -9674,7 +9708,30 @@ void nicUniEventScanDone(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 		}
 	}
 
-	scnEventScanDone(ad, &legacy, TRUE);
+	if (tags_len != offset)
+		DBGLOG(NIC, ERROR, "Tag(%d, %d)\n", TAG_ID(tag), TAG_LEN(tag));
+
+	/* Check whether FW Event State and
+	 * Complete Channel Number are correct.
+	 */
+	if (legacy.ucCurrentState != FW_SCAN_STATE_SCAN_DONE) {
+		DBGLOG(NIC, ERROR, "ucCurrentState(%d) is Invalid!\n",
+			legacy.ucCurrentState);
+		fgIsValidScanDone = FALSE;
+	}
+	if (legacy.ucSparseChannelValid == 1 &&
+		(legacy.ucCompleteChanCount !=
+			legacy.ucSparseChannelArrayValidNum)){
+		DBGLOG(NIC, ERROR,
+			"CompleteChnlCnt(%d) and ChnlArrNum(%d) are mismatched!\n"
+			, legacy.ucCompleteChanCount,
+			legacy.ucSparseChannelArrayValidNum);
+		fgIsValidScanDone = FALSE;
+	}
+
+	if (fgIsValidScanDone == TRUE)
+		scnEventScanDone(ad, &legacy, TRUE);
+
 }
 
 uint32_t nicUniUpdateStaRecFastAll(
@@ -9833,6 +9890,13 @@ void nicUniEventChMngrHandleChEvent(struct ADAPTER *ad,
 
 	DBGLOG_MEM8(CNM, TRACE, data, data_len);
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -9941,6 +10005,13 @@ void nicUniEventMbmcHandleEvent(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -9969,6 +10040,13 @@ void nicUniEventStatusToHost(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -10062,6 +10140,13 @@ void nicUniEventBaOffload(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10126,6 +10211,13 @@ void nicUniEventSleepNotify(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10166,6 +10258,13 @@ void nicUniEventBeaconTimeout(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	timeout = (struct UNI_EVENT_BEACON_TIMEOUT *) data;
 	legacy.ucBssIndex = timeout->ucBssIndex;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10201,6 +10300,13 @@ void nicUniEventUpdateCoex(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 	uint8_t i;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -10240,6 +10346,13 @@ void nicUniEventIdc(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -10287,6 +10400,13 @@ void nicUniEventBssIsAbsence(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 
 	absence = (struct UNI_EVENT_BSS_IS_ABSENCE *) data;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10327,6 +10447,13 @@ void nicUniEventPsSync(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10366,6 +10493,13 @@ void nicUniEventSap(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10398,6 +10532,30 @@ void nicUniEventSap(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 								&legacy);
 		}
 			break;
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+		case UNI_EVENT_SAP_TAG_NOTIFY_AP_GO_STARTED: {
+			struct UNI_EVENT_NOTIFY_AP_GO_STARTED *started =
+				(struct UNI_EVENT_NOTIFY_AP_GO_STARTED *) tag;
+			struct MSG_P2P_NOTIFY_APGO_STARTED *prNotifyMsg = NULL;
+
+			prNotifyMsg = (struct MSG_P2P_NOTIFY_APGO_STARTED *)
+				cnmMemAlloc(ad, RAM_TYPE_MSG,
+					    sizeof(*prNotifyMsg));
+			if (!prNotifyMsg) {
+				DBGLOG(NIC, ERROR, "Alloc mem(%zu) failed\n",
+					sizeof(*prNotifyMsg));
+				break;
+			}
+
+			prNotifyMsg->rMsgHdr.eMsgId =
+				MID_MNY_P2P_NOTIFY_APGO_STARTED;
+			prNotifyMsg->ucBssIdx = started->ucBssIdx;
+			mboxSendMsg(ad, MBOX_ID_0,
+				    (struct MSG_HDR *)prNotifyMsg,
+				    MSG_SEND_METHOD_BUF);
+		}
+			break;
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
 		default:
 			fail_cnt++;
 			ASSERT(fail_cnt < MAX_UNI_EVENT_FAIL_TAG_COUNT)
@@ -10421,6 +10579,13 @@ void nicUniEventOBSS(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 
 	obss = (struct UNI_EVENT_OBSS_UPDATE *) data;
 	legacy.ucBssIndex = obss->ucBssIndex;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -10471,6 +10636,13 @@ void nicUniEventRoaming(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 
 	roam = (struct UNI_EVENT_ROAMING *) data;
 	legacy.ucBssidx = roam->ucBssIndex;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -10523,6 +10695,13 @@ void nicUniEventAddKeyDone(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 
 	done = (struct UNI_EVENT_ADD_KEY_DONE *) data;
 	legacy.ucBSSIndex = done->ucBssIndex;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -10665,6 +10844,13 @@ void nicUniEventFwLog2Host(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10677,7 +10863,11 @@ void nicUniEventFwLog2Host(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 			/* Reserved to set [u2MsgSize] = '\0' later */
 			uint32_t size = sizeof(*legacy) + len + sizeof('\0');
 
-			ASSERT(log->u2Length > sizeof(*log));
+			if (log->u2Length < sizeof(*log)) {
+				DBGLOG(NIC, WARN, "Invalid tag length=%d\n",
+					log->u2Length);
+				break;
+			}
 
 			legacy = kalMemAlloc(size, VIR_MEM_TYPE);
 			if (!legacy) {
@@ -10716,6 +10906,13 @@ void nicUniEventP2p(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -10797,6 +10994,13 @@ void nicUniEventCountdown(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10836,6 +11040,13 @@ void nicUniEventStaRec(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 	struct UNI_EVENT_STAREC *common;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	common = (struct UNI_EVENT_STAREC *) data;
 	tags_len = data_len - fixed_len;
@@ -10910,6 +11121,13 @@ void nicUniEventTdls(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -10948,6 +11166,13 @@ void nicUniEventBssER(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -11002,6 +11227,13 @@ void nicUniEventRssiMonitor(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -11034,6 +11266,13 @@ void nicUniEventHifCtrl(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -11090,6 +11329,13 @@ void nicUniEventRtt(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t fixed_len = sizeof(struct UNI_EVENT_RTT);
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -11181,6 +11427,13 @@ void nicUniEventNan(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t *legacy;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -11242,6 +11495,13 @@ void nicUniEventBF(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t fixed_len = sizeof(struct UNI_EVENT_BF);
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -11426,6 +11686,13 @@ void nicUniEventWow(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t fail_cnt = 0;
 	struct UNI_EVENT_WOW *wow;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	wow = (struct UNI_EVENT_WOW *) data;
 
 	tags_len = data_len - fixed_len;
@@ -11498,6 +11765,13 @@ void nicUniEventCsiData(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *legacy;
 	uint8_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 
@@ -11554,12 +11828,20 @@ static void nicUniEventUevent(uint8_t *pucBuf)
 void nicUniUnsolicitStatsEvt(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 {
 	uint8_t *tag;
+	uint16_t tags_len;
 	uint16_t fixed_len = sizeof(struct UNI_EVENT_STATISTICS);
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
-	uint16_t tags_len = data_len - fixed_len;
 	uint16_t offset = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
+	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
 		switch (TAG_ID(tag)) {
@@ -11586,6 +11868,13 @@ void nicUniEventSR(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -11666,6 +11955,13 @@ void nicUniEventGetVnf(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint32_t fail_cnt = 0;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -11707,6 +12003,13 @@ void nicUniEventPowerMetricsStatGetInfo(struct ADAPTER *ad,
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint32_t fail_cnt = 0;
 	uint32_t i = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -11804,6 +12107,13 @@ void nicUniEventDelayBar(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t fail_cnt = 0;
 	uint8_t i;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -11874,6 +12184,13 @@ void nicUniEventFastPath(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint16_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	uint8_t fail_cnt = 0;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -11959,6 +12276,12 @@ void nicUniEventThermalProtect(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 
 	struct UNI_EVENT_THERMAL_RSP *rsp;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -12100,6 +12423,65 @@ void nicUniEventEfuseFreeBlock(struct ADAPTER
 			       u4QueryInfoLen, WLAN_STATUS_SUCCESS);
 	}
 }
+
+#if (CFG_HW_DETECT_REPORT == 1)
+void nicUniEventHwDetectReport(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
+{
+	int32_t tags_len;
+	uint8_t *tag;
+	uint16_t offset = 0;
+	uint32_t fixed_len = sizeof(struct UNI_EVENT_HW_DETECT_REPORT);
+	uint32_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
+	uint8_t *data = GET_UNI_EVENT_DATA(evt);
+	uint32_t fail_cnt = 0;
+	uint8_t	str_buf[HW_DETECT_REPORT_STR_TO_NODE_MAX_LEN];
+
+	if (!ad->rWifiVar.fgHwDetectReportEn)
+		return;
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
+	tags_len = data_len - fixed_len;
+	tag = data + fixed_len;
+	TAG_FOR_EACH(tag, tags_len, offset) {
+		switch (TAG_ID(tag)) {
+		case UNI_EVENT_HW_DETECT_REPORT_BASIC: {
+			struct UNI_EVENT_HW_DETECT_REPORT_PARAM
+				*hw_detect_report =
+				(struct UNI_EVENT_HW_DETECT_REPORT_PARAM *)tag;
+
+			if (snprintf(str_buf,
+				HW_DETECT_REPORT_STR_TO_NODE_MAX_LEN,
+				"[wlan]%s\n",
+				hw_detect_report->aucStrBuffer) < 0) {
+				DBGLOG(NIC, ERROR,
+			       "HW Detect Report: %s copy failure\n", str_buf);
+				return;
+			}
+
+			DBGLOG(NIC, INFO,
+				"HW Detect Report: %s\n", str_buf);
+			conn_dbg_add_log(CONN_DBG_LOG_TYPE_HW_ERR,
+				str_buf);
+
+			kalSendAeeWarning("WLAN", "HW Detect Report: %s\n",
+				str_buf);
+		}
+			break;
+		default:
+			fail_cnt++;
+			ASSERT(fail_cnt < MAX_UNI_EVENT_FAIL_TAG_COUNT)
+			DBGLOG(NIC, WARN, "invalid tag = %d\n", TAG_ID(tag));
+			break;
+		}
+	}
+}
+#endif /* CFG_HW_DETECT_REPORT */
 
 /*
  * \. Descrption : UNI_CMD UNI_CMD_ID_RX_HDR_TRAN
@@ -12249,6 +12631,13 @@ void nicUniEventFwDropSSN(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint32_t fail_cnt = 0;
 	uint32_t i;
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -12290,6 +12679,13 @@ void nicUniEventUpdateLp(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint32_t fixed_len = sizeof(struct UNI_EVENT_UPDATE_LP);
 	uint32_t data_len = GET_UNI_EVENT_DATA_LEN(evt);
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
+
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
 
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
@@ -12335,6 +12731,13 @@ void nicUniEventMddp(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	uint8_t *data = GET_UNI_EVENT_DATA(evt);
 	static char aucMddpRsn[MDDP_EXP_RSN_SIZE];
 
+	/* underflow check */
+	if (data_len < fixed_len) {
+		DBGLOG(NIC, ERROR, "Invalid event data length:%d\n",
+			data_len);
+		return;
+	}
+
 	tags_len = data_len - fixed_len;
 	tag = data + fixed_len;
 	TAG_FOR_EACH(tag, tags_len, offset) {
@@ -12378,3 +12781,4 @@ void nicUniEventMddp(struct ADAPTER *ad, struct WIFI_UNI_EVENT *evt)
 	}
 }
 #endif /* CFG_MTK_MDDP_SUPPORT */
+

@@ -48,7 +48,7 @@ static inline void kbase_process_page_usage_inc(struct kbase_context *kctx,
 		int pages);
 
 #if IS_ENABLED(CONFIG_MALI_MTK_PAGE_TABLE_CLUSTERING)
-#define MTK_EMI_DRAM_OFFSET 0x40000000
+#define MTK_EMI_DRAM_OFFSET (ARCH_PFN_OFFSET << PAGE_SHIFT)
 
 /* struct alloc_pages_ctx - context for tracking
  *                          page allocation state.
@@ -568,6 +568,7 @@ char *kbase_reg_zone_get_name(enum kbase_memory_zone zone);
 /**
  * kbase_set_phy_alloc_page_status - Set the page migration status of the underlying
  *                                   physical allocation.
+ * @kctx:   Pointer to Kbase context.
  * @alloc:  the physical allocation containing the pages whose metadata is going
  *          to be modified
  * @status: the status the pages should end up in
@@ -576,7 +577,7 @@ char *kbase_reg_zone_get_name(enum kbase_memory_zone zone);
  * proper states are set. Instead, it is only used when we change the allocation
  * to NOT_MOVABLE or from NOT_MOVABLE to ALLOCATED_MAPPED
  */
-void kbase_set_phy_alloc_page_status(struct kbase_mem_phy_alloc *alloc,
+void kbase_set_phy_alloc_page_status(struct kbase_context *kctx, struct kbase_mem_phy_alloc *alloc,
 				     enum kbase_page_status status);
 
 static inline void kbase_mem_phy_alloc_gpu_mapped(struct kbase_mem_phy_alloc *alloc)

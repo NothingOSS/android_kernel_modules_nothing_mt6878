@@ -1520,29 +1520,18 @@ void halReturnTimeoutMsduToken(struct ADAPTER *prAdapter)
 }
 
 #if (CFG_SUPPORT_TX_DATA_DELAY == 1)
-#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
-void halTxDelayTimeout(struct timer_list *timer)
-#else
-void halTxDelayTimeout(unsigned long arg)
-#endif
+enum hrtimer_restart halTxDelayTimeout(struct hrtimer *timer)
 {
-#if (KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE)
-	struct GL_HIF_INFO *prHif = from_timer(prHif, timer, rTxDelayTimer);
+	struct GL_HIF_INFO *prHifInfo =
+		container_of(timer, struct GL_HIF_INFO, rTxDelayTimer);
 	struct GLUE_INFO *prGlueInfo =
-		(struct GLUE_INFO *)prHif->rTxDelayTimerData;
-#else
-	struct GLUE_INFO *prGlueInfo = (struct GLUE_INFO *)arg;
-#endif
-	struct ADAPTER *prAdapter = NULL;
-	struct GL_HIF_INFO *prHifInfo;
+		(struct GLUE_INFO *)prHifInfo->rTxDelayTimerData;
+	struct ADAPTER *prAdapter = prGlueInfo->prAdapter;
 
 	if (test_bit(GLUE_FLAG_HALT_BIT, &prGlueInfo->ulFlag)) {
 		DBGLOG(HAL, INFO, "GLUE_FLAG_HALT skip tx delay timeout\n");
-		return;
+		return HRTIMER_NORESTART;
 	}
-
-	prAdapter = prGlueInfo->prAdapter;
-	prHifInfo = &prGlueInfo->rHifInfo;
 
 	if (IS_FEATURE_ENABLED(prAdapter->rWifiVar.fgEnTxDataDelayDbg))
 		DBGLOG(HAL, TRACE, "Tx Delay timeout\n");
@@ -1553,23 +1542,28 @@ void halTxDelayTimeout(unsigned long arg)
 		    prHifInfo->ulTxDataTimeout);
 
 	kalSetTxEvent2Hif(prGlueInfo);
+
+	return HRTIMER_NORESTART;
 }
 
 void halStartTxDelayTimer(struct ADAPTER *prAdapter)
 {
 	struct GLUE_INFO *prGlueInfo;
 	struct GL_HIF_INFO *prHifInfo;
-	uint32_t u4Timeout = prAdapter->rWifiVar.u4TxDataDelayTimeout;
+	uint32_t u4Timeout;
+	ktime_t delay;
 
 	prGlueInfo = prAdapter->prGlueInfo;
 	prHifInfo = &prGlueInfo->rHifInfo;
+	u4Timeout = prAdapter->rWifiVar.u4TxDataDelayTimeout;
 
 	if (KAL_TEST_BIT(HIF_TX_DATA_DELAY_TIMER_RUNNING_BIT,
 			 prHifInfo->ulTxDataTimeout))
 		return;
 
-	mod_timer(&prHifInfo->rTxDelayTimer,
-		  jiffies + u4Timeout * HZ / MSEC_PER_SEC);
+	delay = ktime_set(0, u4Timeout * 1E6L);
+	hrtimer_start(&prHifInfo->rTxDelayTimer, delay, HRTIMER_MODE_REL);
+
 	KAL_SET_BIT(HIF_TX_DATA_DELAY_TIMER_RUNNING_BIT,
 		    prHifInfo->ulTxDataTimeout);
 
@@ -1647,17 +1641,10 @@ bool halHifSwInfoInit(struct ADAPTER *prAdapter)
 		jiffies + HIF_SER_TIMEOUT * HZ / MSEC_PER_SEC;
 
 #if (CFG_SUPPORT_TX_DATA_DELAY == 1)
-#if (KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE)
-	timer_setup(&prHifInfo->rTxDelayTimer, halTxDelayTimeout, 0);
-	prHifInfo->rTxDelayTimerData = (unsigned long)prAdapter->prGlueInfo;
-#else
-	init_timer(&prHifInfo->rTxDelayTimer);
+	hrtimer_init(&prHifInfo->rTxDelayTimer,
+		CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	prHifInfo->rTxDelayTimer.function = halTxDelayTimeout;
-	prHifInfo->rTxDelayTimer.data = (unsigned long)prAdapter->prGlueInfo;
-#endif
-	prHifInfo->rTxDelayTimer.expires =
-		jiffies + prAdapter->rWifiVar.u4TxDataDelayTimeout *
-		HZ / MSEC_PER_SEC;
+	prHifInfo->rTxDelayTimerData = (unsigned long)prAdapter->prGlueInfo;
 	prHifInfo->ulTxDataTimeout = 0;
 #endif /* CFG_SUPPORT_TX_DATA_DELAY == 1 */
 
@@ -1730,7 +1717,7 @@ void halHifSwInfoUnInit(struct GLUE_INFO *prGlueInfo)
 
 	del_timer_sync(&prHifInfo->rSerTimer);
 #if (CFG_SUPPORT_TX_DATA_DELAY == 1)
-	del_timer_sync(&prHifInfo->rTxDelayTimer);
+	hrtimer_cancel(&prHifInfo->rTxDelayTimer);
 #endif
 
 	halUninitMsduTokenInfo(prGlueInfo->prAdapter);
@@ -1787,6 +1774,8 @@ u_int8_t halProcessToken(struct ADAPTER *prAdapter,
 	struct HIF_MEM_OPS *prMemOps;
 	struct RTMP_DMACB *prTxCell;
 	struct RTMP_TX_RING *prTxRing;
+	uint32_t u4CpuIdx;
+	uint16_t u2Port;
 
 	prHifInfo = &prAdapter->prGlueInfo->rHifInfo;
 	prMemOps = &prHifInfo->rMemOps;
@@ -1829,9 +1818,11 @@ u_int8_t halProcessToken(struct ADAPTER *prAdapter,
 				     prTokenEntry->u4DmaLength);
 	}
 
-	if (prTokenEntry->u4CpuIdx < TX_RING_DATA_SIZE) {
-		prTxRing = &prHifInfo->TxRing[prTokenEntry->u2Port];
-		prTxCell = &prTxRing->Cell[prTokenEntry->u4CpuIdx];
+	u2Port = prTokenEntry->u2Port;
+	u4CpuIdx = prTokenEntry->u4CpuIdx;
+	if (u2Port < NUM_OF_TX_RING && u4CpuIdx < TX_RING_DATA_SIZE) {
+		prTxRing = &prHifInfo->TxRing[u2Port];
+		prTxCell = &prTxRing->Cell[u4CpuIdx];
 		prTxCell->prToken = NULL;
 	}
 	prTokenEntry->u4CpuIdx = TX_RING_DATA_SIZE;
@@ -2315,12 +2306,26 @@ void halRxReceiveRFBs(struct ADAPTER *prAdapter, uint32_t u4Port,
 #endif /* CFG_DYNAMIC_RFB_ADJUSTMENT */
 
 	if (!RX_GET_FREE_RFB_CNT(prRxCtrl)) {
-		DBGLOG_LIMITED(RX, WARN, "No More RFB for P[%u], Ind=%u\n",
-				u4Port, RX_GET_INDICATED_RFB_CNT(prRxCtrl));
+		DBGLOG_LIMITED(RX, WARN,
+			"No More RFB for P[%u], Rfb[%u/%u/%u/%u/%u/%u/%u/%u/%u]\n",
+			u4Port,
+			RX_GET_FREE_RFB_CNT(prRxCtrl),
+			RX_GET_HIF_RECEIVED_RFB_CNT(prRxCtrl),
+			RX_GET_RECEIVED_RFB_CNT(prRxCtrl),
+			RX_GET_REORDERING_TOTAL_CNT(prGlueInfo->prAdapter),
+			RX_GET_PENDING_RFB_CNT(prGlueInfo->prAdapter),
+			RX_GET_INDICATED_RFB_CNT(prRxCtrl),
+			RX_GET_UNUSE_RFB_CNT(prRxCtrl),
+			KAL_GET_FIFO_CNT(prGlueInfo),
+			CFG_RX_MAX_PKT_NUM);
+
 		kalRxRFBFailRecoveryCheck(prGlueInfo);
 		KAL_SET_BIT(u4Port, prAdapter->ulNoMoreRfb);
 		goto end;
 	}
+
+	if (prRxCtrl->u4CheckRFBFailTime)
+		prRxCtrl->u4CheckRFBFailTime = 0;
 
 	u4RxCnt = halWpdmaGetRxDmaDoneCnt(prGlueInfo, u4Port);
 
@@ -3317,7 +3322,7 @@ void halWpdmaProcessCmdDmaDone(struct GLUE_INFO *prGlueInfo,
 		if (pTxD->DMADONE == 0)
 			break;
 
-		log_dbg(HAL, TRACE, "DMA done: port[%u] dma[%u] idx[%u] done[%u] pkt[0x%p] used[%u]\n",
+		log_dbg(HAL, LOUD, "DMA done: port[%u] dma[%u] idx[%u] done[%u] pkt[0x%p] used[%u]\n",
 			u2Port, u4DmaIdx, u4SwIdx, pTxD->DMADONE,
 			prTxRing->Cell[u4SwIdx].pPacket, prTxRing->u4UsedCnt);
 
@@ -3680,7 +3685,7 @@ enum ENUM_CMD_TX_RESULT halWpdmaWriteCmd(struct GLUE_INFO *prGlueInfo,
 	       __func__, prCmdInfo, prCmdInfo->pucTxd, prCmdInfo->u4TxdLen,
 	       prCmdInfo->pucTxp, prCmdInfo->u4TxpLen,
 	       prTxRing->TxCpuIdx, prTxRing->u4UsedCnt);
-	DBGLOG_MEM32(HAL, TRACE, prCmdInfo->pucTxd, prCmdInfo->u4TxdLen);
+	DBGLOG_MEM32(HAL, LOUD, prCmdInfo->pucTxd, prCmdInfo->u4TxdLen);
 
 	if (prSwWfdmaInfo->fgIsEnSwWfdma) {
 		if (prSwWfdmaInfo->rOps.setCidx)

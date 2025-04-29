@@ -226,8 +226,8 @@ extern u_int8_t wlan_perf_monitor_force_enable;
 #define PCIE_GEN_SWITCH_MONITOR_TIMES_MAX 1000000
 #endif
 
-/* OID waiting time (in ms) */
-#define KAL_OID_WAIT_TIME	(WLAN_OID_TIMEOUT_THRESHOLD + 4000)
+/* OID waiting time (12s) */
+#define KAL_OID_WAIT_TIME	(WLAN_OID_TIMEOUT_THRESHOLD + 10000)
 
 /*******************************************************************************
  *                             D A T A   T Y P E S

@@ -229,23 +229,6 @@ void update_driver_l0_reset_status(uint8_t fgIsL0Resetting)
 EXPORT_SYMBOL(update_driver_l0_reset_status);
 #endif
 
-int32_t update_wr_mtx_down_up_status(uint8_t ucDownUp, uint8_t ucIsBlocking)
-{
-	if (ucDownUp == 0) {
-		WIFI_INFO_FUNC("Try to lock wr_mtx\n");
-		if (ucIsBlocking == 1)
-			mutex_lock(&wr_mtx);
-		else if (ucIsBlocking == 0)
-			return mutex_trylock(&wr_mtx);
-	} else if (ucDownUp == 1) {
-		mutex_unlock(&wr_mtx);
-		WIFI_INFO_FUNC("Unlock wr_mtx\n");
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL(update_wr_mtx_down_up_status);
-
 enum ENUM_WLAN_DRV_BUF_TYPE_T {
 	BUF_TYPE_NVRAM,
 	BUF_TYPE_DRV_CFG,
@@ -285,6 +268,7 @@ int32_t wifi_reset_start(void)
 	struct PARAM_CUSTOM_P2P_SET_STRUCT p2pmode;
 
 	mutex_lock(&wr_mtx);
+	WIFI_INFO_FUNC("[wr_mtx] locked.\n");
 
 	if (powered == 1) {
 		netdev = dev_get_by_name(&init_net, ifname);
@@ -326,8 +310,10 @@ int32_t wifi_reset_end(enum ENUM_RESET_STATUS status)
 	if (status == RESET_FAIL) {
 		/* whole chip reset fail, donot recover WIFI */
 		ret = 0;
-		if (mutex_is_locked(&wr_mtx))
+		if (mutex_is_locked(&wr_mtx)) {
+			WIFI_INFO_FUNC("[wr_mtx] unlock.\n");
 			mutex_unlock(&wr_mtx);
+		}
 	} else if (status == RESET_SUCCESS) {
 		WIFI_WARN_FUNC("WIFI state recovering...\n");
 
@@ -396,8 +382,10 @@ done:
 			/* WIFI is off before whole chip reset, do nothing */
 			ret = 0;
 		}
-		if (mutex_is_locked(&wr_mtx))
+		if (mutex_is_locked(&wr_mtx)) {
+			WIFI_INFO_FUNC("[wr_mtx] unlock.\n");
 			mutex_unlock(&wr_mtx);
+		}
 	}
 
 	return ret;
@@ -436,11 +424,14 @@ ssize_t WIFI_write(struct file *filp, const char __user *buf, size_t count, loff
 	uint32_t copy_size = 0;
 
 	mutex_lock(&wr_mtx);
+	WIFI_INFO_FUNC("[wr_mtx] locked.\n");
 	if (count <= 0) {
 		WIFI_ERR_FUNC("WIFI_write invalid param\n");
 		goto done;
 	}
 #if !IS_ENABLED(CFG_SUPPORT_CONNAC1X)
+	write_processing = 1;
+
 	if (driver_resetting == 1 || driver_l0_resetting == 1) {
 		WIFI_ERR_FUNC(
 			"Wi-Fi is resetting, reset flag:[%d,%d]\n",
@@ -459,9 +450,6 @@ ssize_t WIFI_write(struct file *filp, const char __user *buf, size_t count, loff
 			goto done;
 
 		if (local[0] == '0') {
-#if !IS_ENABLED(CFG_SUPPORT_CONNAC1X)
-			write_processing = 1;
-#endif
 			if (powered == 0) {
 				WIFI_INFO_FUNC("WIFI is already power off!\n");
 				retval = count;
@@ -501,9 +489,6 @@ ssize_t WIFI_write(struct file *filp, const char __user *buf, size_t count, loff
 			}
 			powered = 0;
 		} else if (local[0] == '1') {
-#if !IS_ENABLED(CFG_SUPPORT_CONNAC1X)
-			write_processing = 1;
-#endif
 			if (powered == 1) {
 				WIFI_INFO_FUNC("WIFI is already power on!\n");
 				retval = count;
@@ -797,6 +782,7 @@ done:
 #if !IS_ENABLED(CFG_SUPPORT_CONNAC1X)
 	write_processing = 0;
 #endif
+	WIFI_INFO_FUNC("[wr_mtx] unlock.\n");
 	mutex_unlock(&wr_mtx);
 	return retval;
 }

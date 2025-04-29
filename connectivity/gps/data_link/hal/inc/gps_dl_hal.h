@@ -29,6 +29,7 @@ enum gps_dl_hal_power_ctrl_op_enum {
 enum gps_dl_hal_power_ctrl_res_enum {
 	GPS_DUAL_COMMON_LEAVE_DPSTOP_DPSLEEP = 0,
 	GPS_DUAL_SET_HW_WAKEUP_SRC = 1,
+	GPS_DUAL_DUMP_BGF_CR_BEFORE_ENTER_DPSTOP_DPSLEEP = 2,
 	GPS_DUAL_RES_MAX = 31,
 	GPS_DUAL_RES_LIMIT = 32 /* use u_int32 bitmask*/
 };

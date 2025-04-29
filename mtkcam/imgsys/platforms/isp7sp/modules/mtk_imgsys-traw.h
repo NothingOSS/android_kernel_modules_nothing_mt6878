@@ -117,6 +117,7 @@ struct mtk_imgsys_traw_dtable {
 // Public Functions
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 void imgsys_traw_set_initial_value(struct mtk_imgsys_dev *imgsys_dev);
+void imgsys_ltraw_set_initial_value(struct mtk_imgsys_dev *imgsys_dev);
 void imgsys_traw_set_initial_value_hw(struct mtk_imgsys_dev *imgsys_dev);
 void imgsys_ltraw_set_initial_value_hw(struct mtk_imgsys_dev *imgsys_dev);
 void imgsys_traw_cmdq_set_initial_value_hw(struct mtk_imgsys_dev *imgsys_dev,
@@ -129,6 +130,7 @@ void imgsys_traw_updatecq(struct mtk_imgsys_dev *imgsys_dev,
 			struct img_swfrm_info *user_info, int req_fd, u64 tuning_iova,
 			unsigned int mode);
 void imgsys_traw_uninit(struct mtk_imgsys_dev *imgsys_dev);
+void imgsys_ltraw_uninit(struct mtk_imgsys_dev *imgsys_dev);
 int imgsys_traw_tfault_callback(int port, dma_addr_t mva, void *cb_data);
 bool imgsys_traw_done_chk(struct mtk_imgsys_dev *imgsys_dev, uint32_t engine);
 #endif /* _MTK_IMGSYS_TRAW_H_ */

@@ -9,6 +9,7 @@
 #include "met_kernel_symbol.h"
 #include "cpu_pmu.h"
 #include "interface.h"
+#include <linux/perf/arm_pmuv3.h>
 
 /*******************************
  *      ARM v8 operations      *

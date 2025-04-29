@@ -33,6 +33,9 @@
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
 
+#if IS_ENABLED(CFG_MTK_WIFI_CONNV3_SUPPORT)
+#include "connv3.h"
+#endif
 /*******************************************************************************
 *                              C O N S T A N T S
 ********************************************************************************
@@ -1956,7 +1959,7 @@ uint8_t asicConnac3xRxGetRcpiValueFromRxv(
 		ucRcpi0 = RCPI_LOW_BOUND;
 	if (ucRcpi1 == RCPI_MEASUREMENT_NOT_AVAILABLE)
 		ucRcpi1 = RCPI_LOW_BOUND;
-	DBGLOG(RX, TRACE, "RCPI WF0:%d WF1:%d WF2:%d WF3:%d\n",
+	DBGLOG_LIMITED(RX, TRACE, "RCPI WF0:%d WF1:%d WF2:%d WF3:%d\n",
 	       ucRcpi0, ucRcpi1, ucRcpi2, ucRcpi3);
 
 	switch (ucRcpiMode) {
@@ -2594,11 +2597,28 @@ int connsys_power_on(void)
 	struct mt66xx_chip_info *chip = NULL;
 #endif
 	int ret = 0;
-
 #if IS_ENABLED(CFG_MTK_WIFI_CONNV3_SUPPORT)
-	ret = connv3_pwr_on(CONNV3_DRV_TYPE_WIFI);
-	if (ret) {
-		DBGLOG(HAL, ERROR, "connv3_pwr_on failed, ret=%d\n",
+	int retry = 0;
+
+	while (retry <= 25) {
+		ret = connv3_pwr_on(CONNV3_DRV_TYPE_WIFI);
+		if (ret == CONNV3_ERR_RST_ONGOING) {
+			DBGLOG(INIT, WARN,
+				"Wi-Fi on during L0 reset.\n");
+			kalMsleep(200);
+			retry++;
+			continue;
+		} else if (ret == 0) {
+			break;
+		}
+		DBGLOG(HAL, ERROR,
+			"connv3_pwr_on failed, ret=%d\n",
+			ret);
+		return ret;
+	}
+	if (retry > 25) {
+		DBGLOG(INIT, ERROR,
+			"Retry connv3_pwr_on timeout, ret=%d\n",
 			ret);
 		return ret;
 	}

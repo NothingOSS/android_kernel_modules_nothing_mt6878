@@ -1953,8 +1953,10 @@ void nicTxMsduQueueByRR(struct ADAPTER *prAdapter)
 
 	KAL_RELEASE_SPIN_LOCK(prAdapter, SPIN_LOCK_TX_PORT_QUE);
 
-	nicTxMsduQueue(prAdapter, 0, prDataPort0);
-	nicTxMsduQueue(prAdapter, 0, prDataPort1);
+	if (QUEUE_IS_NOT_EMPTY(prDataPort0))
+		nicTxMsduQueue(prAdapter, 0, prDataPort0);
+	if (QUEUE_IS_NOT_EMPTY(prDataPort1))
+		nicTxMsduQueue(prAdapter, 0, prDataPort1);
 
 	KAL_ACQUIRE_SPIN_LOCK(prAdapter, SPIN_LOCK_TX_PORT_QUE);
 	/* Enque from dataQ to TCQ if TX don't finish */
@@ -2127,6 +2129,11 @@ u_int8_t nicTxIsTXDTemplateAllowed(struct ADAPTER
 
 		if (prMsduInfo->pfTxDoneHandler)
 			return FALSE;
+
+#if CFG_SUPPORT_MLR
+		if (MLR_CHECK_IF_MSDU_IS_FRAG(prMsduInfo))
+			return FALSE;
+#endif
 
 		if (prAdapter->rWifiVar.ucDataTxRateMode)
 			return FALSE;
@@ -3910,6 +3917,12 @@ void nicTxProcessTxDoneEvent(struct ADAPTER *prAdapter,
 	u_int8_t fgStop;
 
 	prTxDone = (struct EVENT_TX_DONE *) (prEvent->aucBuffer);
+
+	if (prTxDone->ucStatus >= TX_RESULT_NUM) {
+		DBGLOG(TX, ERROR, "TxStatus out of range: %u!\n",
+			prTxDone->ucStatus);
+		return;
+	}
 
 /* fos_change begin */
 #if CFG_SUPPORT_EXCEPTION_STATISTICS

@@ -717,6 +717,7 @@ int kbase_hwaccess_pm_powerup(struct kbase_device *kbdev,
 	ret = kbase_pm_init_hw(kbdev, flags);
 	if (ret) {
 		kbase_pm_unlock(kbdev);
+		WARN_ON(1);
 		return ret;
 	}
 #if MALI_USE_CSF
@@ -1031,6 +1032,7 @@ int kbase_pm_force_mcu_wakeup_after_sleep(struct kbase_device *kbdev)
 	spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
 	/* Set the override flag to force the power up of L2 cache */
 	kbdev->pm.backend.gpu_wakeup_override = true;
+	kbdev->pm.backend.runtime_suspend_abort_reason = ABORT_REASON_NONE;
 	kbase_pm_update_state(kbdev);
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
 
@@ -1068,14 +1070,27 @@ static int pm_handle_mcu_sleep_on_runtime_suspend(struct kbase_device *kbdev)
 		return ret;
 	}
 
-	/* Check if a Doorbell mirror interrupt occurred meanwhile */
+	/* Check if a Doorbell mirror interrupt occurred meanwhile.
+	 * Also check if GPU idle work item is pending. If FW had sent the GPU idle notification
+	 * after the wake up of MCU then it can be assumed that Userspace submission didn't make
+	 * GPU non-idle, so runtime suspend doesn't need to be aborted.
+         */
 	spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
-	if (kbdev->pm.backend.gpu_sleep_mode_active &&
-	    kbdev->pm.backend.exit_gpu_sleep_mode) {
-		dev_dbg(kbdev->dev, "DB mirror interrupt occurred during runtime suspend after L2 power up");
-		kbdev->pm.backend.gpu_wakeup_override = false;
-		spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
-		return -EBUSY;
+	if (kbdev->pm.backend.gpu_sleep_mode_active && kbdev->pm.backend.exit_gpu_sleep_mode &&
+	    !work_pending(&kbdev->csf.scheduler.gpu_idle_work)) {
+		u32 glb_req =
+			kbase_csf_firmware_global_input_read(&kbdev->csf.global_iface, GLB_REQ);
+		u32 glb_ack = kbase_csf_firmware_global_output(&kbdev->csf.global_iface, GLB_ACK);
+
+		/* Only abort the runtime suspend if GPU idle event is not pending */
+		if (!((glb_req ^ glb_ack) & GLB_REQ_IDLE_EVENT_MASK)) {
+			dev_dbg(kbdev->dev,
+				"DB mirror interrupt occurred during runtime suspend after L2 power up");
+			kbdev->pm.backend.gpu_wakeup_override = false;
+			kbdev->pm.backend.runtime_suspend_abort_reason = ABORT_REASON_DB_MIRROR_IRQ;
+			spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
+			return -EBUSY;
+		}
 	}
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
 	/* Need to release the kbdev->pm.lock to avoid lock ordering issue
@@ -1189,6 +1204,18 @@ int kbase_pm_handle_runtime_suspend(struct kbase_device *kbdev)
 
 	mcu_state = kbdev->pm.backend.mcu_state;
 	WARN_ON(!kbase_pm_is_mcu_inactive(kbdev, mcu_state));
+	if (unlikely(!kbase_pm_is_mcu_inactive(kbdev, mcu_state))) {
+#if IS_ENABLED(CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG)
+		kbase_pm_debug_status(kbdev);
+		dev_err(kbdev->dev, "MCU SM in unexpected state %d on runtime suspend", mcu_state);
+#else
+		dev_WARN_ONCE(kbdev->dev, 1, "MCU SM in unexpected state %d on runtime suspend", mcu_state);
+#endif /* CONFIG_MALI_MTK_POWER_TRANSITION_TIMEOUT_DEBUG */
+		ret = -EBUSY;
+		spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
+		goto unlock;
+	}
+
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
 
 	if (mcu_state == KBASE_MCU_IN_SLEEP) {

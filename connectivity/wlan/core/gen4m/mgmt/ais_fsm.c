@@ -3904,7 +3904,8 @@ void aisFsmRunEventAbort(struct ADAPTER *prAdapter,
 
 		prAisFsmInfo->ucReasonOfDisconnect = ucReasonOfDisconnect;
 		rRoamingData.eReason = ROAMING_REASON_UPPER_LAYER_TRIGGER;
-		rRoamingData.u2Data = prBssDesc->ucRCPI;
+		rRoamingData.u2Data = prBssDesc ?
+			prBssDesc->ucRCPI : RCPI_FOR_DONT_ROAM;
 		rRoamingData.u2RcpiLowThreshold =
 			prRoamingFsmInfo->ucThreshold;
 		rRoamingData.ucBssidx = ucBssIndex;
@@ -6972,6 +6973,13 @@ void aisBssBeaconTimeout_impl(struct ADAPTER *prAdapter,
 
 		if (prStaRec)
 			fgDoAbortIndication = TRUE;
+#if (CFG_SUPPORT_802_11BE_MLO == 1) && defined(CFG_SUPPORT_UNIFIED_COMMAND)
+		if (ucBcnTimeoutReason == UNI_ENUM_BCN_PROT_ERROR) {
+			fgDoAbortIndication = FALSE;
+			DBGLOG(AIS, EVENT,
+				"Skip BTO roam for BP ERROR");
+		}
+#endif
 	} else if (prAisBssInfo->eCurrentOPMode == OP_MODE_IBSS) {
 		fgDoAbortIndication = TRUE;
 	}
@@ -7012,6 +7020,10 @@ void aisBssBeaconTimeout_impl(struct ADAPTER *prAdapter,
 				roam, join);
 			aisHandleBeaconTimeout(prAdapter, ucBssIndex, FALSE);
 		}
+	} else {
+		aisFsmStateAbort(prAdapter,
+			DISCONNECT_REASON_CODE_DEAUTHENTICATED,
+			FALSE, ucBssIndex);
 	}
 }
 
@@ -7513,13 +7525,18 @@ void aisFsmRoamingDisconnectPrevAP(struct ADAPTER *prAdapter,
 		COPY_MAC_ADDR(prAisBssInfo->aucBSSID, prNewBssDesc->aucBSSID);
 	nicUpdateBss(prAdapter, prAisBssInfo->ucBssIndex);
 
-	secRemoveBssBcEntry(prAdapter, prAisBssInfo, TRUE);
-	if (prTargetStaRec)
+	if (prTargetStaRec) {
+		/* if there's no target, postpone removing bc entry to
+		 * deactivate otherwise deactivate won't sync with fw because
+		 * ucBMCWlanIndex == WTBL_RESERVED_ENTRY
+		 */
+		secRemoveBssBcEntry(prAdapter, prAisBssInfo, TRUE);
 		prTargetStaRec->ucBssIndex = prAisBssInfo->ucBssIndex;
+	}
 	/* before deactivate previous AP, should move its pending MSDUs
 	 ** to the new AP
 	 */
-	if (prAisBssInfo->prStaRecOfAP)
+	if (prAisBssInfo->prStaRecOfAP) {
 		if (prAisBssInfo->prStaRecOfAP != prTargetStaRec &&
 		    prAisBssInfo->prStaRecOfAP->fgIsInUse) {
 			qmMoveStaTxQueue(prAisBssInfo->prStaRecOfAP,
@@ -7535,12 +7552,17 @@ void aisFsmRoamingDisconnectPrevAP(struct ADAPTER *prAdapter,
 #endif
 			cnmStaRecFree(prAdapter, prAisBssInfo->prStaRecOfAP);
 			prAisBssInfo->prStaRecOfAP = NULL;
-		} else
+		} else {
 			DBGLOG(AIS, WARN, "prStaRecOfAP is in use %d\n",
 			       prAisBssInfo->prStaRecOfAP->fgIsInUse);
-	else
+			/* starec is already freed in nicUpdateBss */
+			if (!prAisBssInfo->prStaRecOfAP->fgIsInUse)
+				prAisBssInfo->prStaRecOfAP = NULL;
+		}
+	} else {
 		DBGLOG(AIS, WARN,
 		       "NULL pointer of prAisBssInfo->prStaRecOfAP\n");
+	}
 }				/* end of aisFsmRoamingDisconnectPrevAP() */
 
 void aisFsmRoamingDisconnectPrevAllAP(struct ADAPTER *prAdapter,

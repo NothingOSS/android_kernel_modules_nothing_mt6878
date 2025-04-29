@@ -1474,6 +1474,7 @@ struct mt66xx_chip_info {
 #if CFG_MTK_WIFI_EN_SW_EMI_READ
 	const u_int8_t is_en_sw_emi_read;
 #endif
+	const u_int8_t fgDumpViaBtOnlyForDbgSOP;
 	unsigned int txd_append_size;	/* hw mac txd append */
 	const unsigned int hif_txd_append_size; /* hif txd append size */
 	const unsigned int rxd_size;	        /* hw mac rxd size */
@@ -1613,7 +1614,6 @@ struct mt66xx_chip_info {
 	u_int8_t is_support_nvram_fragment;
 	int (*checkbushang)(void *prAdapter,
 		uint8_t ucWfResetEnable);
-	void (*checkmcuoff)(struct ADAPTER *prAdapter);
 	uint32_t u4ADieVer;
 	uint64_t chip_capability;
 

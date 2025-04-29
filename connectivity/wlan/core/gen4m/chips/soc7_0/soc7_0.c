@@ -1239,18 +1239,26 @@ static int wake_up_conninfra_off(void)
 	uint32_t value = 0;
 	uint32_t polling_count;
 	uint32_t u4ConnsysVersion = 0;
-
+	uint32_t u4Idx = 0;
 	/* Wakeup conn_infra off
 	 * Address: 0x1806_01A4[0]
 	 * Data: 1'b1
 	 * Action: write
 	 */
-	wf_ioremap_read(CONN_HOST_CSR_TOP_CONN_INFRA_WAKEPU_WF_ADDR, &value);
-	value |= CONN_HOST_CSR_TOP_CONN_INFRA_WAKEPU_WF_CONN_INFRA_WAKEPU_WF_MASK;
-	wf_ioremap_write(CONN_HOST_CSR_TOP_CONN_INFRA_WAKEPU_WF_ADDR, value);
-
-	/* wait 200 us to avoid fake ready */
-	udelay(200);
+	for (u4Idx = 0; u4Idx < 10; u4Idx++) {
+		wf_ioremap_read(CONN_HOST_CSR_TOP_CONN_INFRA_WAKEPU_WF_ADDR,
+				&value);
+		value |=
+			CONN_HOST_CSR_TOP_CONN_INFRA_WAKEPU_WF_CONN_INFRA_WAKEPU_WF_MASK;
+		wf_ioremap_write(CONN_HOST_CSR_TOP_CONN_INFRA_WAKEPU_WF_ADDR,
+				value);
+		kalUdelay(1000);
+		wf_ioremap_read(CONN_HOST_CSR_TOP_CONN_INFRA_WAKEPU_WF_ADDR,
+				&value);
+		if ((value &
+			CONN_HOST_CSR_TOP_CONN_INFRA_WAKEPU_WF_CONN_INFRA_WAKEPU_WF_MASK) != 0)
+			break;
+	}
 
 	/* Check CONNSYS version ID
 	 * (polling "10 times" for specific project code
@@ -1954,6 +1962,14 @@ release_wfsys_sem_done:
 	value |= 0x000000FF;
 	HAL_MCR_WR(prAdapter,
 		AP2WF_CONN_INFRA_ON_CCIF4_AP2WF_PCCIF_ACK_ADDR, value);
+
+	/* Read A-die top_ck_en_1
+	 * Address: 0x18003124
+	 * Action: read
+	 */
+	wf_ioremap_read(CONN_WT_SLP_CTL_REG_WB_SLP_TOP_CK_1_ADDR, &value);
+	DBGLOG(INIT, INFO, "Read A-die top_ck_en_1 (0x%x)\n", value);
+	udelay(50);
 
 	/* Disable A-die top_ck_en_1
 	 * Address: 0x18003124[0]

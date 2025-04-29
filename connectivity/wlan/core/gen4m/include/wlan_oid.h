@@ -2389,8 +2389,9 @@ struct PARAM_MTK_WIFI_TEST_STRUCT {
 	uint32_t u4FuncData;
 }__KAL_ATTRIB_PACKED__;
 
+#define MAX_IQ_ARRAY_WF_CNT 4
 struct _RBIST_IQ_DATA_T {
-	int32_t u4IQArray[4][2]; /* IQ_Array[WF][IQ] */
+	int32_t u4IQArray[MAX_IQ_ARRAY_WF_CNT][2]; /* IQ_Array[WF][IQ] */
 };
 
 struct RECAL_DATA_T {
@@ -5501,5 +5502,10 @@ wlanoidSet6GPwrMode(struct ADAPTER *prAdapter,
 		     void *pvSetBuffer, uint32_t u4SetBufferLen,
 		     uint32_t *pu4SetInfoLen);
 #endif /* CFG_SUPPORT_WIFI_6G_PWR_MODE */
+
+uint32_t
+wlanoidQueryLteSafeChannel(struct ADAPTER *prAdapter,
+			void *pvQueryBuffer, uint32_t u4QueryBufferLen,
+			uint32_t *pu4QueryInfoLen);
 
 #endif /* _WLAN_OID_H */

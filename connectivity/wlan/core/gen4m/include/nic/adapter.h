@@ -594,6 +594,12 @@ struct BSS_INFO {
 #if CFG_SUPPORT_REPLAY_DETECTION
 	struct GL_DETECT_REPLAY_INFO rDetRplyInfo;
 #endif
+
+	u_int8_t fgIsApGoStarted;
+
+#ifdef CFG_AP_GO_DELAY_CARRIER_ON
+	struct TIMER rP2pApGoCarrierOnTimer;
+#endif /* CFG_AP_GO_DELAY_CARRIER_ON */
 };
 
 #if (CFG_SUPPORT_802_11BE_MLO == 1)
@@ -892,6 +898,7 @@ struct WIFI_VAR {
 	u_int8_t fgEnEpcs;
 #endif
 #endif
+	uint8_t ucGoBcnIntrvl;
 	uint8_t ucApHt;
 	uint8_t ucApVht;
 	uint8_t ucP2pGoHt;
@@ -1652,6 +1659,9 @@ struct WIFI_VAR {
 	/* throughput factor log lv 2 dump period unit:ms */
 	uint32_t u4TputFactorDumpThresh;
 	/* throughput factor dump threshold unit:mbps */
+#endif
+#if (CFG_SUPPORT_WIFI_6G_PWR_MODE == 1)
+	uint8_t fgSpPwrLmtBackoff;
 #endif
 };
 

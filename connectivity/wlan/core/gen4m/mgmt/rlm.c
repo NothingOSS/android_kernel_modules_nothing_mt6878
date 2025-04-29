@@ -3495,10 +3495,6 @@ static uint8_t rlmRecIeInfoForClient(struct ADAPTER *prAdapter,
 					(prStaRec->u2VhtRxMcsMapAssoc &
 					VHT_CAP_INFO_MCS_1SS_MASK);
 			}
-			DBGLOG(RLM, INFO,
-				"[OP Mode IE] NSS=%x RxMcsMap:0x%x, McsMapAssoc:0x%x\n",
-				ucVhtOpModeRxNss, prStaRec->u2VhtRxMcsMap,
-				prStaRec->u2VhtRxMcsMapAssoc);
 
 #if (CFG_SUPPORT_802_11AX == 1)
 			u2HeRxMcsMapAssoc = prStaRec->u2HeRxMcsMapBW80Assoc;
@@ -3521,12 +3517,6 @@ static uint8_t rlmRecIeInfoForClient(struct ADAPTER *prAdapter,
 					(u2HeRxMcsMapAssoc &
 					HE_CAP_INFO_MCS_1SS_MASK);
 			}
-
-			DBGLOG(RLM, INFO,
-				"[OP Mode IE] HeBW80, NSS=%d, RxMcsMap:0x%x, McsMapAssoc:0x%x\n",
-				ucVhtOpModeRxNss,
-				prStaRec->u2HeRxMcsMapBW80,
-				prStaRec->u2HeRxMcsMapBW80Assoc);
 
 			if (ucMaxBwAllowed >= MAX_BW_160MHZ) {
 				u2HeRxMcsMapAssoc =
@@ -3551,12 +3541,16 @@ static uint8_t rlmRecIeInfoForClient(struct ADAPTER *prAdapter,
 						HE_CAP_INFO_MCS_1SS_MASK);
 				}
 
-				DBGLOG(RLM, INFO,
-					"[OP Mode IE] HeBW160, NSS=%d, RxMcsMap:0x%x, McsMapAssoc:0x%x\n",
-					ucVhtOpModeRxNss,
-					prStaRec->u2HeRxMcsMapBW160,
-					prStaRec->u2HeRxMcsMapBW160Assoc);
 			}
+			DBGLOG(RLM, INFO,
+				"[OP Mode IE] NSS=%d,MaxBW=%d,(RxMcsMap,McsMapAssoc):(0x%x,0x%x)BW80(0x%x,0x%x)BW160(0x%x,0x%x)\n",
+				ucVhtOpModeRxNss, ucMaxBwAllowed,
+				prStaRec->u2VhtRxMcsMap,
+				prStaRec->u2VhtRxMcsMapAssoc,
+				prStaRec->u2HeRxMcsMapBW80,
+				prStaRec->u2HeRxMcsMapBW80Assoc,
+				prStaRec->u2HeRxMcsMapBW160,
+				prStaRec->u2HeRxMcsMapBW160Assoc);
 #if (CFG_SUPPORT_WIFI_6G == 1)
 			if (fgIsRx1ss)
 				prStaRec->u2He6gBandCapInfo &=
@@ -3565,6 +3559,12 @@ static uint8_t rlmRecIeInfoForClient(struct ADAPTER *prAdapter,
 				prStaRec->u2He6gBandCapInfo |=
 					HE_6G_CAP_INFO_SM_POWER_SAVE;
 #endif
+#else
+			DBGLOG(RLM, INFO,
+				"[OP Mode IE] NSS=%x RxMcsMap:0x%x, McsMapAssoc:0x%x\n",
+				ucVhtOpModeRxNss, prStaRec->u2VhtRxMcsMap,
+				prStaRec->u2VhtRxMcsMapAssoc);
+
 #endif /* CFG_SUPPORT_802_11AX == 1 */
 			break;
 		default:
@@ -9373,8 +9373,10 @@ uint32_t rlmRegTxPwrLimitUpdate(
 		if (prBssDesc->cPowerLimit != icNewPwrLimit) {
 
 			DBGLOG(RLM, TRACE,
-			"Update Regulatory PwrLmt SSID:%s BSSID["MACSTR
+			"Update Regulatory PwrLmt(%c%c)SSID:%s BSSID["MACSTR
 			"]Old PwrLmt[%d]New PwrLmt[%d]Constrant[%d]DFS[%d]\n",
+			((prBssDesc->u2CurrCountryCode & 0xff00) >> 8),
+			(prBssDesc->u2CurrCountryCode & 0x00ff),
 			prBssDesc->aucSSID,
 			MAC2STR(prBssDesc->aucBSSID),
 			prBssDesc->cPowerLimit,
@@ -11023,11 +11025,16 @@ uint32_t rlmTxPwrEnvMaxTxPwrCalcByPsd(
 
 	/* 2. Convert TxPower limit PSD to BW Power limit
 	 *    - Max TxPwr(dBm) = PSD(dBm/Hz) + 10*log(BW)
+	 *    We will also convert power LSB = 0.5dBm
 	 */
 	if (u4Status == WLAN_STATUS_SUCCESS) {
 		for (eBwType = TX_PWR_ENV_MAX_TXPWR_BW20;
 			eBwType < TX_PWR_ENV_MAX_TXPWR_BW_NUM; eBwType++) {
 			rlmTxPwrEnvGetPwrDelta(eBwType, &ucTxPwrDelta);
+
+			/* Note the icMaxTxPwrPsd is LSB = 0.5dBm and
+			 * ucTxPwrDelta is already convert to LSB = 0.5dBm
+			 */
 			picMaxTxPwr[eBwType] = icMaxTxPwrPsd + ucTxPwrDelta;
 		}
 	}
@@ -11211,9 +11218,15 @@ uint32_t rlmTxPwrEnv6GPwrModeHdler(
 	enum TX_PWR_ENV_MAX_TXPWR_BW_TYPE eBw;
 
 	if (e6GPwrMode == PWR_MODE_6G_SP) {
-
 		if (prAdapter->rWifiVar.u2CountryCode != COUNTRY_CODE_US) {
 			/* So far only FCC need handle TPE limit for SP AP */
+			return WLAN_STATUS_SUCCESS;
+		}
+
+		if (prAdapter->rWifiVar.fgSpPwrLmtBackoff != FEATURE_ENABLED) {
+			/* When AP handle 6dbm backoff, client no need to
+			 * base on TPE power limit - 6dBm
+			 */
 			return WLAN_STATUS_SUCCESS;
 		}
 
@@ -11288,7 +11301,7 @@ uint32_t rlmTxPwrEnvMaxPwrUpdate(
 		 && (eHwBand != BAND_6G)
 #endif
 	) {
-		DBGLOG(RLM, TRACE,
+		DBGLOG_LIMITED(RLM, TRACE,
 			"Skip TxPwrEnv update,band[%d]SpecMgmt[%d]\n",
 			eHwBand,
 			prBssDesc->fgExtSpecMgmtCap);

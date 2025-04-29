@@ -79,11 +79,6 @@
 #define BUFFER_MODE_CONTENT_MAX 1024
 #define BUFFER_ACCESS_CONTENT_MAX 16
 
-#if (CFG_HW_DETECT_REPORT == 1)
-/* UNI_EVENT_HW_DETECT_REPORT usage */
-#define HW_DETECT_REPORT_STR_MAX_LEN 64
-#endif
-
 /*******************************************************************************
  *                                 M A C R O S
  *******************************************************************************
@@ -5259,6 +5254,7 @@ struct UNI_EVENT_SPECTRUM_DATA {
 	int32_t i4Data[256];
 } __KAL_ATTRIB_PACKED__;
 
+#if (CFG_SUPPORT_PHY_ICS == 1)
 /* PHY_ICS_DATA (Tag2) */
 __KAL_ATTRIB_PACKED_FRONT__
 struct UNI_EVENT_PHY_ICS_DUMP_RAW_DATA {
@@ -5270,8 +5266,9 @@ struct UNI_EVENT_PHY_ICS_DUMP_RAW_DATA {
 	uint32_t u4PhyTimestamp;
 	uint32_t u4DataLen;
 	uint32_t u4Reserved[5];
-	uint32_t u4Data[256];
+	uint32_t u4Data[MAX_PHY_ICS_DUMP_DATA_CNT];
 } __KAL_ATTRIB_PACKED__;
+#endif /* #if (CFG_SUPPORT_ICS == 1) */
 
 enum ENUM_UNI_BCN_TIMEOUT_REASON {
 	UNI_ENUM_BCN_LOSS_STA = 0x00,
@@ -5286,6 +5283,7 @@ enum ENUM_UNI_BCN_TIMEOUT_REASON {
 	UNI_ENUM_BCN_LOSS_AP_ERROR = 0x09,
 	UNI_ENUM_BCN_MLINK_NULL_FRAME_THRESHOLD = 0x0a,
 	UNI_ENUM_BCN_LINK_RECOVERY = 0x0b,
+	UNI_ENUM_BCN_PROT_ERROR = 0x0c,
 	UNI_ENUM_BCN_TIMEOUT_REASON_MAX_NUM
 };
 
@@ -5956,6 +5954,7 @@ struct UNI_EVENT_SAP {
 enum ENUM_UNI_EVENT_SAP_TAG {
 	UNI_EVENT_SAP_TAG_AGING_TIMEOUT = 0,
 	UNI_EVENT_SAP_TAG_UPDATE_STA_FREE_QUOTA = 1,
+	UNI_EVENT_SAP_TAG_NOTIFY_AP_GO_STARTED = 2,
 	UNI_EVENT_SAP_TAG_NUM
 };
 
@@ -5974,6 +5973,14 @@ struct UNI_EVENT_UPDATE_STA_FREE_QUOTA {
 	uint16_t u2WlanIdx;
 	uint8_t  ucUpdateMode;
 	uint8_t  ucFreeQuota;
+} __KAL_ATTRIB_PACKED__;
+
+__KAL_ATTRIB_PACKED_FRONT__
+struct UNI_EVENT_NOTIFY_AP_GO_STARTED {
+	uint16_t u2Tag;
+	uint16_t u2Length;
+	uint8_t  ucBssIdx;
+	uint8_t  aucReserved[3];
 } __KAL_ATTRIB_PACKED__;
 
 __KAL_ATTRIB_PACKED_FRONT__

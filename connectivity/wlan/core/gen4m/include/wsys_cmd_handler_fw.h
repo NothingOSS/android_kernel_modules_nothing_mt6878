@@ -160,6 +160,11 @@
 #define EHT_MAC_CAP_BYTE_NUM                    (2)
 #define EHT_PHY_CAP_BYTE_NUM                    (9)
 
+#if (CFG_HW_DETECT_REPORT == 1)
+/* UNI_EVENT_HW_DETECT_REPORT usage */
+#define HW_DETECT_REPORT_STR_MAX_LEN          64
+#define HW_DETECT_REPORT_STR_TO_NODE_MAX_LEN  (HW_DETECT_REPORT_STR_MAX_LEN + 7)
+#endif
 /*****************************************************************************
 *                             D A T A   T Y P E S
 ******************************************************************************
@@ -622,6 +627,9 @@ enum ENUM_EVENT_ID {
 	/* 0xEC (Query - CMD_ID_GET_NIC_CAPABILITY_V2) */
 	EVENT_ID_LAYER_0_EXT_MAGIC_NUM  = 0xED,
 	/* magic number for Extending MT6630 original EVENT header  */
+#if (CFG_HW_DETECT_REPORT == 1)
+	EVENT_ID_HW_DETECT_REPROT = 0xEF,
+#endif
 	EVENT_ID_ASSERT_DUMP = 0xF0,
 #if (CFG_VOLT_INFO == 1)
 	EVEN_ID_GET_VOLT_INFO = 0xF3,

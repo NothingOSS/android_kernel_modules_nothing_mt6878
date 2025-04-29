@@ -28,6 +28,11 @@
 
 #include <linux/dma-mapping.h>
 
+/* Kernel/CPU page size can be 4/16/64KB whereas GPU page size is fixed as 4KB */
+#define GPU_PAGE_SIZE SZ_4K
+#define GPU_PAGE_MASK (~(SZ_4K - 1))
+#define GPU_PAGES_PER_CPU_PAGE (PAGE_SIZE / GPU_PAGE_SIZE)
+
 /* Flags for kbase_phy_allocator_pages_alloc */
 #define KBASE_PHY_PAGES_FLAG_DEFAULT (0)	/** Default allocation flag */
 #define KBASE_PHY_PAGES_FLAG_CLEAR   (1 << 0)	/** Clear the pages after allocation */

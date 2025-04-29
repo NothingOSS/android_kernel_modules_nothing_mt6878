@@ -2180,12 +2180,6 @@ enum ENUM_MTK_OUI_CHIP_CAP {
 
 #define VENDOR_IE_TYPE_MBO                          0x506f9a16
 
-/* Epigram IE */
-#define VENDOR_IE_EPIGRAM_OUI                      0x00904c
-#define VENDOR_IE_EPIGRAM_VHTTYPE1                  0x0400
-#define VENDOR_IE_EPIGRAM_VHTTYPE2                  0x0408
-#define VENDOR_IE_EPIGRAM_VHTTYPE3                  0x0418
-
 /* Cisco IE */
 #define VENDOR_IE_CISCO_OUI                        0x004096
 #define VENDOR_IE_CISCO_TYPE                       0x2C
@@ -4414,6 +4408,13 @@ struct IE_MTK_OUI {
 	uint8_t aucOui[3];
 	uint8_t aucCapability[4];
 	uint8_t aucInfoElem[1];
+} __KAL_ATTRIB_PACKED__;
+
+__KAL_ATTRIB_PACKED_FRONT__
+struct IE_MTK_MLR {
+	uint8_t ucId;
+	uint8_t ucLength;
+	uint8_t ucLRBitMap;
 } __KAL_ATTRIB_PACKED__;
 
 __KAL_ATTRIB_PACKED_FRONT__

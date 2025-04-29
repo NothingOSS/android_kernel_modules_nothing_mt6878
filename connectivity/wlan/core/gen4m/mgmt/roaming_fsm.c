@@ -1349,15 +1349,18 @@ void roamingFsmRunEventNewCandidate(struct ADAPTER *prAdapter,
 uint32_t roamingFsmProcessEvent(struct ADAPTER *prAdapter,
 	struct CMD_ROAMING_TRANSIT *prTransit)
 {
-	struct ROAMING_INFO *prRoamingFsmInfo;
 	uint8_t ucBssIndex = prTransit->ucBssidx;
+
+	if (ucBssIndex >= MAX_BSSID_NUM) {
+		DBGLOG(ROAMING, ERROR, "ucBssIndex [%d] out of range!\n",
+			ucBssIndex);
+		return WLAN_STATUS_FAILURE;
+	}
 
 	DBGLOG(ROAMING, LOUD,
 	       "[%d] ROAMING Process Events: Current Time = %u\n",
 	       ucBssIndex,
 	       kalGetTimeTick());
-
-	prRoamingFsmInfo = aisGetRoamingInfo(prAdapter, ucBssIndex);
 
 	if (prTransit->u2Event == ROAMING_EVENT_DISCOVERY) {
 		struct CMD_ROAMING_TRANSIT rTransit = {0};

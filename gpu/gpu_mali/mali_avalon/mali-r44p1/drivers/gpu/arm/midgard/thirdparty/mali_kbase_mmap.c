@@ -21,17 +21,102 @@
 
 
 /**
+ * shader_code_align_and_check() - Align the specified pointer according to shader code
+ *                     requirement.
+ *
+ * @gap_end:           Highest possible start address for alignment. The caller must ensure
+ *                     the input has already been properly aligned with info contained fields.
+ * @info:              vm_unmapped_area_info structure passed, containing alignment, length
+ *                     and limits for the allocation
+ *
+ * The function only undertakes the shader code alignment adjustment. It's the caller's
+ * responsibility that the input value provided via gap_end has already been properly aligned
+ * in compliance to the fields specified in the info structure. Irrespective the return result,
+ * the value of the variable pointed by the pointer gap_end may have been decreased in
+ * reaching the required alignment, but will not drop below info->low_limit.
+ *
+ * Return: true if gap_end is now aligned correctly, false otherwise
+ */
+static bool shader_code_align_and_check(unsigned long *gap_end, struct vm_unmapped_area_info *info)
+{
+	unsigned long align_adjust = (info->align_offset ? info->align_offset : info->length);
+	unsigned long align_floor = info->low_limit + align_adjust;
+
+	/* Check for 4GB address inner high-bit pattern, make adjustment if all zeros */
+	if (0 == (*gap_end & BASE_MEM_MASK_4GB) && *gap_end >= align_floor)
+		(*gap_end) -= align_adjust;
+	if (0 == ((*gap_end + info->length) & BASE_MEM_MASK_4GB) && *gap_end >= align_floor)
+		(*gap_end) -= align_adjust;
+
+	return ((*gap_end & BASE_MEM_MASK_4GB) && ((*gap_end + info->length) & BASE_MEM_MASK_4GB));
+}
+
+/**
+ * align_4gb_no_straddle() - Align the specified pointer not to straddle over a 4_GB boundary.
+ *
+ * @gap_end:           Highest possible start address for alignment. The caller must ensure
+ *                     the input has already been properly aligned with info contained fields.
+ * @info:              vm_unmapped_area_info structure passed, containing alignment, length
+ *                     and limits for the allocation
+ *
+ * The function only undertakes the 4GB boundary alignment adjustment. It's the caller's
+ * responsibility that the input value provided via gap_end has already been properly aligned
+ * in compliance to the fields specified in the info structure.
+ *
+ * Return: true is always expected and the gap_end is aligned correctly, false can only
+ *         be possible when the code has been wrongly modified.
+ */
+static bool align_4gb_no_straddle(unsigned long *gap_end, struct vm_unmapped_area_info *info)
+{
+	unsigned long start = *gap_end;
+	unsigned long end = *gap_end + info->length;
+	unsigned long mask = ~((unsigned long)U32_MAX);
+
+	/* Check if 4GB boundary is straddled */
+	if ((start & mask) != ((end - 1) & mask)) {
+		unsigned long offset = end - (end & mask);
+		/* This is to ensure that alignment doesn't get
+		 * disturbed in an attempt to prevent straddling at
+		 * 4GB boundary. The GPU VA is aligned to 2MB when the
+		 * allocation size is > 2MB and there is enough CPU &
+		 * GPU virtual space.
+		 */
+		unsigned long rounded_offset = ALIGN(offset, info->align_mask + 1);
+
+		start -= rounded_offset;
+		end -= rounded_offset;
+
+		/* Patch gap_end to use new starting address for VA region */
+		*gap_end = start;
+
+		/* The preceding 4GB boundary shall not get straddled,
+		 * even after accounting for the alignment, as the
+		 * size of allocation is limited to 4GB and the initial
+		 * start location was already aligned.
+		 */
+		if (WARN_ONCE((start & mask) != ((end - 1) & mask),
+			      "Alignment unexpected straddles over 4GB boundary!"))
+			return false;
+	}
+
+	return true;
+}
+
+#if (KERNEL_VERSION(6, 1, 0) > LINUX_VERSION_CODE) || !defined(__ANDROID_COMMON_KERNEL__)
+/**
  * align_and_check() - Align the specified pointer to the provided alignment and
- *                     check that it is still in range.
- * @gap_end:        Highest possible start address for allocation (end of gap in
- *                  address space)
- * @gap_start:      Start address of current memory area / gap in address space
- * @info:           vm_unmapped_area_info structure passed to caller, containing
- *                  alignment, length and limits for the allocation
- * @is_shader_code: True if the allocation is for shader code (which has
- *                  additional alignment requirements)
- * @is_same_4gb_page: True if the allocation needs to reside completely within
- *                    a 4GB chunk
+ *                     check that it is still in range. For Kernel versions below
+ *                     6.1, it requires that the length of the alignment is already
+ *                     extended by a worst-case alignment mask.
+ * @gap_end:           Highest possible start address for allocation (end of gap in
+ *                     address space)
+ * @gap_start:         Start address of current memory area / gap in address space
+ * @info:              vm_unmapped_area_info structure passed to caller, containing
+ *                     alignment, length and limits for the allocation
+ * @is_shader_code:    True if the allocation is for shader code (which has
+ *                     additional alignment requirements)
+ * @is_same_4gb_page:  True if the allocation needs to reside completely within
+ *                     a 4GB chunk
  *
  * Return: true if gap_end is now aligned correctly and is still in range,
  *         false otherwise
@@ -41,58 +126,22 @@ static bool align_and_check(unsigned long *gap_end, unsigned long gap_start,
 		bool is_same_4gb_page)
 {
 	/* Compute highest gap address at the desired alignment */
-	(*gap_end) -= info->length;
-	(*gap_end) -= (*gap_end - info->align_offset) & info->align_mask;
+	*gap_end -= info->length;
+	*gap_end -= (*gap_end - info->align_offset) & info->align_mask;
 
 	if (is_shader_code) {
-		/* Check for 4GB boundary */
-		if (0 == (*gap_end & BASE_MEM_MASK_4GB))
-			(*gap_end) -= (info->align_offset ? info->align_offset :
-					info->length);
-		if (0 == ((*gap_end + info->length) & BASE_MEM_MASK_4GB))
-			(*gap_end) -= (info->align_offset ? info->align_offset :
-					info->length);
-
-		if (!(*gap_end & BASE_MEM_MASK_4GB) || !((*gap_end +
-				info->length) & BASE_MEM_MASK_4GB))
+		if (!shader_code_align_and_check(gap_end, info))
 			return false;
-	} else if (is_same_4gb_page) {
-		unsigned long start = *gap_end;
-		unsigned long end = *gap_end + info->length;
-		unsigned long mask = ~((unsigned long)U32_MAX);
-
-		/* Check if 4GB boundary is straddled */
-		if ((start & mask) != ((end - 1) & mask)) {
-			unsigned long offset = end - (end & mask);
-			/* This is to ensure that alignment doesn't get
-			 * disturbed in an attempt to prevent straddling at
-			 * 4GB boundary. The GPU VA is aligned to 2MB when the
-			 * allocation size is > 2MB and there is enough CPU &
-			 * GPU virtual space.
-			 */
-			unsigned long rounded_offset =
-					ALIGN(offset, info->align_mask + 1);
-
-			start -= rounded_offset;
-			end -= rounded_offset;
-
-			*gap_end = start;
-
-			/* The preceding 4GB boundary shall not get straddled,
-			 * even after accounting for the alignment, as the
-			 * size of allocation is limited to 4GB and the initial
-			 * start location was already aligned.
-			 */
-			WARN_ON((start & mask) != ((end - 1) & mask));
-		}
-	}
-
+	} else if (is_same_4gb_page)
+		if (!align_4gb_no_straddle(gap_end, info))
+			return false;
 
 	if ((*gap_end < info->low_limit) || (*gap_end < gap_start))
 		return false;
 
 	return true;
 }
+#endif
 
 /**
  * kbase_unmapped_area_topdown() - allocates new areas top-down from
@@ -226,37 +275,124 @@ check_current:
 			}
 		}
 	}
-#else
-	unsigned long length, high_limit, gap_start, gap_end;
+#else /* KERNEL_VERSION(6, 1, 0) > LINUX_VERSION_CODE */
+#ifdef __ANDROID_COMMON_KERNEL__
+	struct vm_unmapped_area_info tmp_info = *info;
+	unsigned long length;
+
+	tmp_info.flags |= VM_UNMAPPED_AREA_TOPDOWN;
+	if (!(is_shader_code || is_same_4gb_page))
+		return vm_unmapped_area(&tmp_info);
+
+	length = info->length + info->align_mask;
+
+	/* Due to additional alignment requirement, shader_code or same_4gb_page
+	 * needs iterations for alignment search and confirmation check.
+	 */
+	while (true) {
+		unsigned long saved_high_lmt = tmp_info.high_limit;
+		unsigned long gap_end, start, rev_high_limit;
+
+		gap_end = vm_unmapped_area(&tmp_info);
+		if (IS_ERR_VALUE(gap_end))
+			return gap_end;
+
+		start = gap_end;
+		if (is_shader_code) {
+			bool shader_code_aligned;
+			unsigned long align_cmp_ref;
+
+			while (true) {
+				/* Save the start value for progress check. the loop needs
+				 * to end if the alignment can't progress any further.
+				 * In summary, the loop ends condition here is either:
+				 *  1. shader_code_aligned is true; or
+				 *  2. align_cmp_ref == gap_end.
+				 */
+				align_cmp_ref = gap_end;
+
+				shader_code_aligned =
+					shader_code_align_and_check(&gap_end, &tmp_info);
+				if (shader_code_aligned || (align_cmp_ref == gap_end))
+					break;
+			}
+
+			if (shader_code_aligned) {
+				if (start == gap_end)
+					return gap_end;
+
+				rev_high_limit = gap_end + length;
+			} else
+				break;
+		} else {
+			/* must be same_4gb_page case */
+			if (likely(align_4gb_no_straddle(&gap_end, &tmp_info))) {
+				if (start == gap_end)
+					return gap_end;
+
+				rev_high_limit = gap_end + length;
+			} else
+				break;
+		}
+
+		if (rev_high_limit < info->low_limit)
+			break;
+
+		if (WARN_ONCE(rev_high_limit >= saved_high_lmt,
+			      "Unexpected recurring high_limit in search, %lx => %lx\n"
+			      "\tinfo-input: limit=[%lx, %lx], mask=%lx, len=%lx\n",
+			      saved_high_lmt, rev_high_limit, info->low_limit, info->high_limit,
+			      info->align_mask, info->length))
+			rev_high_limit = saved_high_lmt -
+					 (info->align_offset ? info->align_offset : info->length);
+
+		/* Repeat the search with a decreasing rev_high_limit */
+		tmp_info.high_limit = rev_high_limit;
+	}
+#else /* __ANDROID_COMMON_KERNEL__ */
+	unsigned long length, high_limit;
 
 	MA_STATE(mas, &current->mm->mm_mt, 0, 0);
+
 	/* Adjust search length to account for worst case alignment overhead */
 	length = info->length + info->align_mask;
 	if (length < info->length)
 		return -ENOMEM;
 
-	/*
-	 * Adjust search limits by the desired length.
-	 * See implementation comment at top of unmapped_area().
-	 */
-	gap_end = info->high_limit;
-	if (gap_end < length)
-		return -ENOMEM;
-	high_limit = gap_end - length;
-
-	if (info->low_limit > high_limit)
+	high_limit = info->high_limit;
+	if ((high_limit - info->low_limit) < length)
 		return -ENOMEM;
 
 	while (true) {
-		if (mas_empty_area_rev(&mas, info->low_limit, info->high_limit - 1, length))
+		unsigned long gap_start, gap_end;
+		unsigned long saved_high_lmt = high_limit;
+
+		if (mas_empty_area_rev(&mas, info->low_limit, high_limit - 1, length))
 			return -ENOMEM;
+
 		gap_end = mas.last + 1;
-		gap_start = mas.min;
+		gap_start = mas.index;
 
 		if (align_and_check(&gap_end, gap_start, info, is_shader_code, is_same_4gb_page))
 			return gap_end;
+
+		if (gap_end < info->low_limit)
+			return -ENOMEM;
+
+		/* Adjust next search high limit */
+		high_limit = gap_end + length;
+
+		if (WARN_ONCE(high_limit >= saved_high_lmt,
+			      "Unexpected recurring high_limit in search, %lx => %lx\n"
+			      "\tinfo-input: limit=[%lx, %lx], mask=%lx, len=%lx\n",
+			      saved_high_lmt, high_limit, info->low_limit, info->high_limit,
+			      info->align_mask, info->length))
+			high_limit = saved_high_lmt -
+				     (info->align_offset ? info->align_offset : info->length);
+		mas_reset(&mas);
 	}
-#endif
+#endif /* __ANDROID_COMMON_KERNEL__ */
+#endif /* KERNEL_VERSION(6, 1, 0) > LINUX_VERSION_CODE */
 	return -ENOMEM;
 }
 

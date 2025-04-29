@@ -960,7 +960,7 @@ int kbase_mem_evictable_make(struct kbase_mem_phy_alloc *gpu_alloc)
 	/* Indicate to page migration that the memory can be reclaimed by the shrinker.
 	 */
 	if (kbase_is_page_migration_enabled())
-		kbase_set_phy_alloc_page_status(gpu_alloc, NOT_MOVABLE);
+		kbase_set_phy_alloc_page_status(kctx, gpu_alloc, NOT_MOVABLE);
 
 #if IS_ENABLED(CONFIG_MALI_MTK_JIT_RECLAIM_ANTITHRASHING)
 	gpu_alloc->reg->last_used_ts = 0;
@@ -1025,7 +1025,7 @@ bool kbase_mem_evictable_unmake(struct kbase_mem_phy_alloc *gpu_alloc)
 			 * from.
 			 */
 			if (kbase_is_page_migration_enabled())
-				kbase_set_phy_alloc_page_status(gpu_alloc, ALLOCATED_MAPPED);
+				kbase_set_phy_alloc_page_status(kctx, gpu_alloc, ALLOCATED_MAPPED);
 		}
 	}
 

@@ -1770,6 +1770,12 @@ kalProcessRxPacket(struct GLUE_INFO *prGlueInfo,
 	uint32_t rStatus = WLAN_STATUS_SUCCESS;
 	struct sk_buff *skb = (struct sk_buff *)pvPacket;
 
+	if (!skb) {
+		RX_INC_CNT(&prGlueInfo->prAdapter->rRxCtrl,
+			RX_NULL_PACKET_COUNT);
+		return WLAN_STATUS_FAILURE;
+	}
+
 	skb->data = (unsigned char *)pucPacketStart;
 
 	/* Reset skb */
@@ -2144,32 +2150,29 @@ void kalRxRFBFailRecoveryCheck(struct GLUE_INFO *prGlueInfo)
 
 	prRxCtrl = &prGlueInfo->prAdapter->rRxCtrl;
 
-	if (RX_GET_TOTAL_RFB_CNT(prGlueInfo) < CFG_RX_RFB_MEM_LEAK_THRESHOLD) {
-		DBGLOG(RX, WARN,
-			"Monitor RFB memory leak, Rfb[%u/%u/%u/%u/%u/%u/%u/%u]\n",
-			RX_GET_FREE_RFB_CNT(prRxCtrl),
-			RX_GET_HIF_RECEIVED_RFB_CNT(prRxCtrl),
-			RX_GET_RECEIVED_RFB_CNT(prRxCtrl),
-			RX_GET_REORDERING_TOTAL_CNT(prGlueInfo->prAdapter),
-			RX_GET_PENDING_RFB_CNT(prGlueInfo->prAdapter),
-			RX_GET_INDICATED_RFB_CNT(prRxCtrl),
-			RX_GET_UNUSE_RFB_CNT(prRxCtrl),
-			KAL_GET_FIFO_CNT(prGlueInfo),
-			CFG_RX_MAX_PKT_NUM);
+	if (RX_GET_TOTAL_RFB_CNT(prGlueInfo) >= CFG_RX_RFB_MEM_LEAK_THRESHOLD) {
+		prRxCtrl->u4CheckRFBFailTime = 0;
+		return;
+	}
 
-		if (prRxCtrl->u4CheckRFBFailTime
-			&& TIME_AFTER(kalGetTimeTick(),
-				prRxCtrl->u4CheckRFBFailTime)) {
-			DBGLOG(RX, ERROR,
-				"Trigger chip reset due to RFB memory leak\n");
-			GL_DEFAULT_RESET_TRIGGER(prGlueInfo->prAdapter,
-				RST_RFB_FAIL);
-		}
-
+	/* If CheckRFBFailTime is 0 that indicates the first detection of a
+	  * small amount of SWRFB, and set the next detection time to double
+	  * confirm SWRFB leaks is not false alarm.
+	  */
+	if (prRxCtrl->u4CheckRFBFailTime == 0) {
 		prRxCtrl->u4CheckRFBFailTime = kalGetTimeTick()
 			+ CFG_RX_RFB_MEM_LEAK_INTERVAL;
-	} else {
-		prRxCtrl->u4CheckRFBFailTime = 0;
+		DBGLOG_LIMITED(RX, INFO,
+			"Monitor RFB memory leak, check RFB fail time : %u\n",
+			prRxCtrl->u4CheckRFBFailTime);
+		return;
+	}
+
+	if (TIME_AFTER(kalGetTimeTick(), prRxCtrl->u4CheckRFBFailTime)) {
+		DBGLOG(RX, ERROR,
+			"Trigger chip reset due to RFB memory leak\n");
+		GL_DEFAULT_RESET_TRIGGER(prGlueInfo->prAdapter,
+			RST_RFB_FAIL);
 	}
 }
 
@@ -3823,6 +3826,7 @@ kalHardStartXmit(struct sk_buff *prOrgSkb,
 			DBGLOG(INIT, ERROR, "cloned_skb copy fail\n");
 			return WLAN_STATUS_NOT_ACCEPTED;
 		}
+		kmemleak_not_leak(prSkbNew); /* Omit memleak check */
 		dev_kfree_skb(prOrgSkb);
 		prSkb = prSkbNew;
 		TX_INC_CNT(&prAdapter->rTxCtrl, TX_IN_COPY_COUNT);
@@ -4885,6 +4889,7 @@ kalIoctlByBssIdx(struct GLUE_INFO *prGlueInfo,
 
 	if (g_u4HaltFlag) {
 		up(&g_halt_sem);
+		DBGLOG(OID, WARN, "g_u4HaltFlag = %u\n", g_u4HaltFlag);
 		return WLAN_STATUS_ADAPTER_NOT_READY;
 	}
 
@@ -4900,7 +4905,8 @@ kalIoctlByBssIdx(struct GLUE_INFO *prGlueInfo,
 	if (kalIsResetting()) {
 		up(&prGlueInfo->ioctl_sem);
 		up(&g_halt_sem);
-		return WLAN_STATUS_SUCCESS;
+		DBGLOG(OID, WARN, "Driver is resetting.\n");
+		return WLAN_STATUS_ADAPTER_NOT_READY;
 	}
 
 	ASSERT(prGlueInfo->prAdapter);
@@ -4908,7 +4914,8 @@ kalIoctlByBssIdx(struct GLUE_INFO *prGlueInfo,
 	if (wlanIsChipAssert(prGlueInfo->prAdapter)) {
 		up(&prGlueInfo->ioctl_sem);
 		up(&g_halt_sem);
-		return WLAN_STATUS_SUCCESS;
+		DBGLOG(OID, WARN, "wlanIsChipAssert.\n");
+		return WLAN_STATUS_ADAPTER_NOT_READY;
 	}
 
 	if (prGlueInfo->main_thread == NULL) {
@@ -5021,6 +5028,7 @@ kalIoctlByBssIdx(struct GLUE_INFO *prGlueInfo,
 			wlanReleasePendingOid(prGlueInfo->prAdapter, 0);
 		}
 #endif
+		prGlueInfo->fgOidWaiting = FALSE;
 		/* note: do not dump main_thread's call stack here, */
 		/*       because it may be running on other cpu.    */
 		DBGLOG(OID, WARN,
@@ -13550,6 +13558,7 @@ static int kalNapiPollSwRfb(struct napi_struct *napi, int budget)
 	struct ADAPTER *prAdapter;
 	static int32_t i4UserCnt;
 	struct SW_RFB *prSwRfb;
+	uint32_t u4Cnt;
 
 	/* Allow one user only */
 	if (GLUE_INC_REF_CNT(i4UserCnt) > 1)
@@ -13564,7 +13573,9 @@ static int kalNapiPollSwRfb(struct napi_struct *napi, int budget)
 	 */
 	nicRxIndicateRfbMainToNapi(prAdapter);
 
-	while (KAL_FIFO_OUT(&prGlueInfo->rRxKfifoQ, prSwRfb)) {
+	u4Cnt = KAL_GET_FIFO_CNT(prGlueInfo);
+	while ((work_done <= u4Cnt) &&
+		KAL_FIFO_OUT(&prGlueInfo->rRxKfifoQ, prSwRfb)) {
 		if (!prSwRfb) {
 			DBGLOG(RX, ERROR, "prSwRfb null\n");
 			break;
@@ -13576,9 +13587,8 @@ static int kalNapiPollSwRfb(struct napi_struct *napi, int budget)
 		RX_INC_CNT(&prAdapter->rRxCtrl,
 			RX_NAPI_FIFO_OUT_COUNT);
 		nicRxProcessPacketType(prAdapter, prSwRfb);
-#if !CFG_SUPPORT_RX_GRO_PEAK
+
 		work_done++;
-#endif /* !CFG_SUPPORT_RX_GRO_PEAK */
 	}
 
 #if CFG_SUPPORT_RX_GRO_PEAK

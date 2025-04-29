@@ -7874,6 +7874,8 @@ wlanoidSetKeyCfg(struct ADAPTER *prAdapter,
 		 uint32_t *pu4SetInfoLen) {
 	uint32_t rWlanStatus = WLAN_STATUS_SUCCESS;
 	struct PARAM_CUSTOM_KEY_CFG_STRUCT *prKeyCfgInfo;
+	uint8_t *pucKey = NULL;
+	uint8_t aucKey[MAX_CMD_NAME_MAX_LENGTH] = {0};
 
 	DBGLOG(INIT, LOUD, "\n");
 
@@ -7896,13 +7898,15 @@ wlanoidSetKeyCfg(struct ADAPTER *prAdapter,
 	} else {
 		wlanCfgSet(prAdapter, prKeyCfgInfo->aucKey,
 			   prKeyCfgInfo->aucValue, prKeyCfgInfo->u4Flag);
+		kalStrnCpy(&aucKey[0], prKeyCfgInfo->aucKey,
+			MAX_CMD_NAME_MAX_LENGTH);
+		pucKey = &aucKey[0];
 		wlanInitFeatureOptionImpl(prAdapter, prKeyCfgInfo->aucKey);
 #if CFG_SUPPORT_IOT_AP_BLACKLIST
 		if (kalMemCmp(prKeyCfgInfo->aucKey, "IOTAP", 5) == 0)
 			wlanCfgLoadIotApRule(prAdapter);
 #endif
 	}
-
 
 	DBGLOG(REQ, TRACE,
 		"StaVHT [%u], ApVHT [%u], GoVHT [%u], GcVHT [%u]\n",
@@ -7922,7 +7926,7 @@ wlanoidSetKeyCfg(struct ADAPTER *prAdapter,
 		prAdapter->rWifiVar.ucTxStbc,
 		prAdapter->rWifiVar.ucRxStbc);
 #if CFG_SUPPORT_EASY_DEBUG
-	wlanFeatureToFw(prAdapter, prKeyCfgInfo->u4Flag);
+	wlanFeatureToFw(prAdapter, prKeyCfgInfo->u4Flag, pucKey);
 #endif
 
 	return rWlanStatus;
@@ -11368,7 +11372,11 @@ wlanoidSetWapiKey(struct ADAPTER *prAdapter,
 	     rCmdKey.aucPeerAddr[5]) == 0xFF) {
 		prStaRec = cnmGetStaRecByAddress(prAdapter,
 				prBssInfo->ucBssIndex, prBssInfo->aucBSSID);
-		ASSERT(prStaRec);	/* AIS RSN Group key, addr is BC addr */
+		if (prStaRec == NULL) {
+			DBGLOG(REQ, WARN, "Can't find station.\n");
+			return WLAN_STATUS_FAILURE;
+		}
+		/* AIS RSN Group key, addr is BC addr */
 		kalMemCopy(rCmdKey.aucPeerAddr, prStaRec->aucMacAddr,
 			   MAC_ADDR_LEN);
 	} else {
@@ -11400,7 +11408,8 @@ wlanoidSetWapiKey(struct ADAPTER *prAdapter,
 				prStaRec->fgTransmitKeyExist =
 					TRUE;	/* wait for CMD Done ? */
 			} else {
-				ASSERT(FALSE);
+				DBGLOG(REQ, WARN, "Key type is invalid.\n");
+				return WLAN_STATUS_INVALID_DATA;
 			}
 		}
 #if 0
@@ -11455,7 +11464,9 @@ wlanoidSetWapiKey(struct ADAPTER *prAdapter,
 							rCmdKey.ucKeyId);
 				prStaRec->ucWlanIndex = rCmdKey.ucWlanIndex;
 			} else {	/* Exist this case ? */
-				ASSERT(FALSE);
+				DBGLOG(REQ, WARN, "Can't find station.\n");
+				return WLAN_STATUS_FAILURE;
+
 				/* prCmdKey->ucWlanIndex = */
 				/* secPrivacySeekForBcEntry(prAdapter, */
 				/* prBssInfo->ucBssIndex, */
@@ -17420,3 +17431,70 @@ wlanoidSet6GPwrMode(struct ADAPTER *prAdapter,
 	return rStatus;
 }	/* wlanoidSet6GPwrMode */
 #endif
+
+#if CFG_ENABLE_WIFI_DIRECT
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief This routine is called to query LTE safe channels.
+ *
+ * \param[in]  pvAdapter        Pointer to the Adapter structure.
+ * \param[out] pvQueryBuffer    A pointer to the buffer that holds the result of
+ *                              the query.
+ * \param[in]  u4QueryBufferLen The length of the query buffer.
+ * \param[out] pu4QueryInfoLen  If the call is successful, returns the number of
+ *                              bytes written into the query buffer. If the call
+ *                              failed due to invalid length of the query
+ *                              buffer, returns the amount of storage needed.
+ *
+ * \retval WLAN_STATUS_PENDING
+ * \retval WLAN_STATUS_FAILURE
+ */
+/*----------------------------------------------------------------------------*/
+uint32_t
+wlanoidQueryLteSafeChannel(struct ADAPTER *prAdapter,
+			void *pvQueryBuffer, uint32_t u4QueryBufferLen,
+			uint32_t *pu4QueryInfoLen)
+{
+#if CFG_SUPPORT_GET_LTE_SAFE_CHANNEL
+	struct CMD_GET_LTE_SAFE_CHN rQuery_LTE_SAFE_CHN = { 0 };
+
+	DBGLOG(P2P, INFO, "query Lte safe channel bitmap");
+
+	if (!prAdapter) {
+		DBGLOG(P2P, ERROR, "no adapter found");
+		return WLAN_STATUS_FAILURE;
+	}
+
+	if (!pu4QueryInfoLen) {
+		DBGLOG(P2P, ERROR, "zero query info len");
+		return WLAN_STATUS_FAILURE;
+	}
+
+	if (u4QueryBufferLen && !pvQueryBuffer) {
+		DBGLOG(P2P, ERROR, "null query buffer with buffer len");
+		return WLAN_STATUS_FAILURE;
+	}
+
+	*pu4QueryInfoLen = sizeof(struct PARAM_GET_CHN_INFO);
+
+	if (u4QueryBufferLen < sizeof(struct PARAM_GET_CHN_INFO))
+		return WLAN_STATUS_BUFFER_TOO_SHORT;
+
+	return wlanSendSetQueryCmd(prAdapter,
+				CMD_ID_GET_LTE_CHN,
+				FALSE,
+				TRUE,
+				TRUE,
+				nicCmdEventQueryLteSafeChn,
+				nicOidCmdTimeoutCommon,
+				sizeof(struct CMD_GET_LTE_SAFE_CHN),
+				(uint8_t *)&rQuery_LTE_SAFE_CHN,
+				(struct PARAM_GET_CHN_INFO *)pvQueryBuffer,
+				u4QueryBufferLen);
+
+#else
+	DBGLOG(P2P, INFO, "[ACS] Not Support Get safe LTE Channels\n");
+	return WLAN_STATUS_NOT_SUPPORTED;
+#endif /* CFG_SUPPORT_GET_LTE_SAFE_CHANNEL */
+}
+#endif /* CFG_ENABLE_WIFI_DIRECT */

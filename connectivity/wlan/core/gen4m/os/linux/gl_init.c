@@ -6112,11 +6112,6 @@ static void ics_log_event_notification(int cmd, int value)
 		}
 	}
 
-	if (kalIsHalted()) {
-		DBGLOG(INIT, INFO, "device not ready return");
-		return;
-	}
-
 	WIPHY_PRIV(wlanGetWiphy(), prGlueInfo);
 	if (!prGlueInfo) {
 		DBGLOG(INIT, INFO, "prGlueInfo is NULL return");
@@ -6126,6 +6121,11 @@ static void ics_log_event_notification(int cmd, int value)
 	prAdapter = prGlueInfo->prAdapter;
 	if (!prAdapter) {
 		DBGLOG(INIT, INFO, "prAdapter is NULL return");
+		return;
+	}
+
+	if (kalIsHalted() || !prGlueInfo->u4ReadyFlag) {
+		DBGLOG(INIT, INFO, "device not ready return");
 		return;
 	}
 
@@ -6326,11 +6326,15 @@ static void consys_log_event_notification(int cmd, int value)
 
 	switch (cmd) {
 	case FW_LOG_CMD_ON_OFF:
+		if (value < 0 || value > 1)
+			return;
 		u4LogOnOffCache = value;
 		if (u4LogOnOffCache == 0)
 			fgRetrieveLog = TRUE;
 		break;
 	case FW_LOG_CMD_SET_LEVEL:
+		if (value < 0 || value > 2)
+			return;
 		u4LogLevelCache = value;
 		break;
 	default:
@@ -6351,6 +6355,14 @@ static void consys_log_event_notification(int cmd, int value)
 				u4LogOnOffCache);
 		return;
 	}
+
+#if (CFG_MTK_ANDROID_WMT)
+	if (!prGlueInfo->u4ReadyFlag) {
+		DBGLOG(INIT, ERROR, "Skip due to driver NOT ready.\n");
+		return;
+	}
+#endif
+
 	prAdapter = prGlueInfo->prAdapter;
 	DBGLOG(INIT, TRACE, "prAdapter=%p\n", prAdapter);
 	if (!prAdapter) {
@@ -6778,11 +6790,11 @@ int32_t wlanOnWhenProbeSuccess(struct GLUE_INFO *prGlueInfo,
 	/* move before reading file
 	 * wlanLoadDefaultCustomerSetting(prAdapter);
 	 */
-	wlanFeatureToFw(prGlueInfo->prAdapter, WLAN_CFG_DEFAULT);
+	wlanFeatureToFw(prGlueInfo->prAdapter, WLAN_CFG_DEFAULT, NULL);
 
 	/*if driver backup Engineer Mode CFG setting before*/
 	wlanResoreEmCfgSetting(prGlueInfo->prAdapter);
-	wlanFeatureToFw(prGlueInfo->prAdapter, WLAN_CFG_EM);
+	wlanFeatureToFw(prGlueInfo->prAdapter, WLAN_CFG_EM, NULL);
 #endif
 
 #if CFG_SUPPORT_IOT_AP_BLACKLIST
@@ -6815,6 +6827,8 @@ int32_t wlanOnWhenProbeSuccess(struct GLUE_INFO *prGlueInfo,
 
 	/* card is ready */
 	prGlueInfo->u4ReadyFlag = 1;
+	g_IsWfsysResetOnFail = FALSE;
+	DBGLOG(INIT, STATE, "card is ready.\n");
 #if CFG_MTK_ANDROID_WMT
 	update_driver_loaded_status(prGlueInfo->u4ReadyFlag);
 #endif
@@ -7375,7 +7389,7 @@ static int32_t wlanProbe(void *pvData, void *pvDriverData)
 #if CFG_SUPPORT_PCIE_GEN_SWITCH
 	struct BUS_INFO *prBusInfo;
 #endif
-
+	KAL_WARN_ON(!kalIsHalted());
 #if CFG_CHIP_RESET_KO_SUPPORT
 	send_reset_event(RESET_MODULE_TYPE_WIFI, RFSM_EVENT_PROBE_START);
 #endif
@@ -7709,6 +7723,9 @@ static int32_t wlanProbe(void *pvData, void *pvDriverData)
 		default:
 			break;
 		}
+		kalSetHalted(TRUE);
+		if (prGlueInfo)
+			prGlueInfo->u4ReadyFlag = 0;
 #if CFG_CHIP_RESET_KO_SUPPORT
 		send_reset_event(RESET_MODULE_TYPE_WIFI, RFSM_EVENT_PROBE_FAIL);
 #endif

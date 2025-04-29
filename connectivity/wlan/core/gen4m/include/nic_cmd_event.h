@@ -117,6 +117,10 @@
 #define CONNECTION_TDLS			(STA_TYPE_TDLS|NETWORK_INFRA)
 #define CONNECTION_WDS			(STA_TYPE_WDS|NETWORK_WDS)
 
+#if (CFG_SUPPORT_PHY_ICS == 1)
+#define MAX_PHY_ICS_DUMP_DATA_CNT	256
+#endif /* CFG_SUPPORT_PHY_ICS */
+
 /*
  * Definitions for extension CMD_ID
  */
@@ -3524,7 +3528,7 @@ struct EXT_EVENT_PHY_ICS_DUMP_DATA_T {
 	uint32_t u4PhyTimestamp;
 	uint32_t u4DataLen;
 	uint32_t u4Reserved[5];
-	uint32_t u4Data[256];
+	uint32_t u4Data[MAX_PHY_ICS_DUMP_DATA_CNT];
 };
 #endif /* #if (CFG_SUPPORT_PHY_ICS == 1) */
 
@@ -4159,6 +4163,13 @@ struct CMD_LP_DBG_CTRL {
 	uint8_t aucReserved[3];
 };
 
+#if (CFG_HW_DETECT_REPORT == 1)
+struct EVENT_HW_DETECT_REPORT {
+	bool fgIsReportNode;
+	uint8_t aucReserved[3];
+	uint8_t aucStrBuffer[HW_DETECT_REPORT_STR_MAX_LEN];
+};
+#endif
 /*******************************************************************************
  *                            P U B L I C   D A T A
  *******************************************************************************
@@ -4676,6 +4687,10 @@ void nicCmdEventGetSlpCntInfo(struct ADAPTER *prAdapter,
 void nicCmdEventLpKeepPwrCtrl(struct ADAPTER *prAdapter,
 	struct CMD_INFO *prCmdInfo, uint8_t *pucEventBuf);
 
+#if (CFG_HW_DETECT_REPORT == 1)
+void nicEventHwDetectReport(struct ADAPTER *prAdapter,
+		struct WIFI_EVENT *prEvent);
+#endif
 /*******************************************************************************
  *                              F U N C T I O N S
  *******************************************************************************
