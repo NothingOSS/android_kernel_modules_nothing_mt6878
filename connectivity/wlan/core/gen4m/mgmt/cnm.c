@@ -1160,6 +1160,7 @@ void cnmCsaDoneEvent(struct ADAPTER *prAdapter,
 		prP2pBssInfo->eCurrentOPMode == OP_MODE_INFRASTRUCTURE)
 		return;
 
+	DBGLOG(CNM, INFO, "notify csadone, policy.\n");
 	p2pFunChnlSwitchNotifyDone(prAdapter);
 }
 

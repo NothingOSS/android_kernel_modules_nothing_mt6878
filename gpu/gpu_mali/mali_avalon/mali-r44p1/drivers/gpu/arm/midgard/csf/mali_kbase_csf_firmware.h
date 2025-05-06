@@ -617,6 +617,8 @@ void kbase_csf_firmware_trigger_mcu_sleep(struct kbase_device *kbdev);
 bool kbase_csf_firmware_is_mcu_in_sleep(struct kbase_device *kbdev);
 #endif
 
+void kbase_csf_firmware_reload(struct kbase_device *kbdev);
+
 /**
  * kbase_csf_firmware_trigger_reload() - Trigger the reboot of MCU firmware, for
  *                                       the cold boot case firmware image would

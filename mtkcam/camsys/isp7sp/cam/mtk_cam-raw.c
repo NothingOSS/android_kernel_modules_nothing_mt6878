@@ -1563,6 +1563,12 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 	if (!dev->dma_parms) {
 		dev->dma_parms =
 			devm_kzalloc(dev, sizeof(*dev->dma_parms), GFP_KERNEL);
+
+		if (!dev->dma_parms) {
+			dev_info(dev, "kcalloc memory faill %d", __LINE__);
+			dev->dma_parms = vmalloc(sizeof(*dev->dma_parms));
+		}
+
 		if (!dev->dma_parms)
 			return -ENOMEM;
 	}
@@ -1627,6 +1633,10 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 	if (raw->num_clks) {
 		raw->clks = devm_kcalloc(dev, raw->num_clks, sizeof(*raw->clks),
 					 GFP_KERNEL);
+		if (!raw->clks) {
+		    printk("kcalloc memory faill %d", __LINE__);
+		    raw->clks = vmalloc(raw->num_clks*sizeof(*raw->clks));
+		}
 		if (!raw->clks)
 			return -ENOMEM;
 	}
@@ -1648,6 +1658,10 @@ static int mtk_raw_of_probe(struct platform_device *pdev,
 		raw->larbs = devm_kcalloc(dev,
 					     raw->num_larbs, sizeof(*raw->larbs),
 					     GFP_KERNEL);
+		if (!raw->larbs) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    raw->larbs = vmalloc(raw->num_larbs*sizeof(*raw->larbs));
+		}
 		if (!raw->larbs)
 			return -ENOMEM;
 	}
@@ -1741,6 +1755,12 @@ static int mtk_raw_probe(struct platform_device *pdev)
 	int ret;
 
 	raw_dev = devm_kzalloc(dev, sizeof(*raw_dev), GFP_KERNEL);
+
+	if (!raw_dev) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		raw_dev = vmalloc(sizeof(*raw_dev));
+	}
+
 	if (!raw_dev)
 		return -ENOMEM;
 
@@ -1760,6 +1780,12 @@ static int mtk_raw_probe(struct platform_device *pdev)
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
 
 	raw_dev->msg_buffer = devm_kzalloc(dev, raw_dev->fifo_size, GFP_KERNEL);
+
+	if (!raw_dev->msg_buffer) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		raw_dev->msg_buffer = vmalloc(raw_dev->fifo_size);
+	}
+
 	if (!raw_dev->msg_buffer) {
 		ret = -ENOMEM;
 		goto UNREGISTER_PM_NOTIFIER;
@@ -2017,6 +2043,12 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 	if (!dev->dma_parms) {
 		dev->dma_parms =
 			devm_kzalloc(dev, sizeof(*dev->dma_parms), GFP_KERNEL);
+
+	if (!dev->dma_parms) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		dev->dma_parms = vmalloc(sizeof(*dev->dma_parms));
+	}
+
 		if (!dev->dma_parms)
 			return -ENOMEM;
 	}
@@ -2077,6 +2109,10 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 		drvdata->clks = devm_kcalloc(dev,
 					     drvdata->num_clks, sizeof(*drvdata->clks),
 					     GFP_KERNEL);
+		if (!drvdata->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    drvdata->clks = vmalloc(drvdata->num_clks*sizeof(*drvdata->clks));
+		}
 		if (!drvdata->clks)
 			return -ENOMEM;
 	}
@@ -2098,6 +2134,10 @@ static int mtk_yuv_of_probe(struct platform_device *pdev,
 		drvdata->larbs = devm_kcalloc(dev,
 					     drvdata->num_larbs, sizeof(*drvdata->larbs),
 					     GFP_KERNEL);
+		if (!drvdata->larbs) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    drvdata->larbs = vmalloc(drvdata->num_larbs*sizeof(*drvdata->larbs));
+		}
 		if (!drvdata->larbs)
 			return -ENOMEM;
 	}
@@ -2171,6 +2211,12 @@ static int mtk_yuv_probe(struct platform_device *pdev)
 	int ret;
 
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
+
+	if (!drvdata) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		drvdata = vmalloc(sizeof(*drvdata));
+	}
+
 	if (!drvdata)
 		return -ENOMEM;
 
@@ -2573,6 +2619,10 @@ static int mtk_rms_of_probe(struct platform_device *pdev,
 		drvdata->clks = devm_kcalloc(dev,
 					     drvdata->num_clks, sizeof(*drvdata->clks),
 					     GFP_KERNEL);
+		if (!drvdata->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    drvdata->clks = vmalloc(drvdata->num_clks*sizeof(*drvdata->clks));
+		}
 		if (!drvdata->clks)
 			return -ENOMEM;
 	}
@@ -2604,6 +2654,12 @@ static int mtk_rms_probe(struct platform_device *pdev)
 	int ret;
 
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
+
+	if (!drvdata) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		drvdata = vmalloc(sizeof(*drvdata));
+	}
+
 	if (!drvdata)
 		return -ENOMEM;
 

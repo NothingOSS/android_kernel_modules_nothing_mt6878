@@ -21,7 +21,7 @@
 #include "adaptor-subdrv-ctrl.h"
 #include "adaptor-i2c.h"
 #include "adaptor-ctrls.h"
-
+#define write_cmos_sensor_8(...) subdrv_i2c_wr_u8(__VA_ARGS__)
 static const char * const clk_names[] = {
 	ADAPTOR_CLK_NAMES
 };
@@ -370,6 +370,11 @@ void write_frame_length(struct subdrv_ctx *ctx, u32 fll)
 			set_i2c_buffer(ctx,	addr_l, (fll >> 8) & 0xFF);
 			set_i2c_buffer(ctx,	addr_ll, fll & 0xFF);
 		} else {
+			if(ctx->exposure[0] >= (ctx->s_ctx.frame_length_max - ctx->s_ctx.exposure_margin) &&
+			   ctx->s_ctx.sensor_id == S5KGN9SP_SENSOR_ID) {
+			   fll = (ctx->exposure[0] / 128) + 74;
+			   DRV_LOG(ctx,"Enter Long Exposure Mode fll=0x%x",fll);
+			}
 			set_i2c_buffer(ctx,	addr_h, (fll >> 8) & 0xFF);
 			set_i2c_buffer(ctx,	addr_l, fll & 0xFF);
 		}
@@ -1128,7 +1133,13 @@ void set_long_exposure(struct subdrv_ctx *ctx)
 		shutter = ((shutter - 1) >> l_shift) + 1;
 		ctx->frame_length = shutter + ctx->s_ctx.exposure_margin;
 		DRV_LOG(ctx, "long exposure mode: lshift %u times", l_shift);
-		set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift, l_shift);
+		if(ctx->s_ctx.sensor_id == S5KGN9SP_SENSOR_ID) {
+		    set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift, 0x07);
+		    set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift+1, 0x00);
+		    set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift+2, 0x07);
+		    set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift+3, 0x00);
+		} else
+		    set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift, l_shift);
 		ctx->l_shift = l_shift;
 		/* Frame exposure mode customization for LE*/
 		ctx->ae_frm_mode.frame_mode_1 = IMGSENSOR_AE_MODE_SE;
@@ -1136,8 +1147,14 @@ void set_long_exposure(struct subdrv_ctx *ctx)
 		ctx->current_ae_effective_frame = 2;
 	} else {
 		if (ctx->s_ctx.reg_addr_exposure_lshift != PARAM_UNDEFINED) {
-			set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift, l_shift);
-			ctx->l_shift = l_shift;
+		    if(ctx->s_ctx.sensor_id == S5KGN9SP_SENSOR_ID) {
+		        set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift, 0x00);
+		        set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift+1, 0x00);
+		        set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift+2, 0x00);
+		        set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift+3, 0x00);
+		    } else
+		        set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_exposure_lshift, l_shift);
+		    ctx->l_shift = l_shift;
 		}
 		ctx->current_ae_effective_frame = 2;
 	}
@@ -1154,6 +1171,7 @@ void set_shutter_frame_length(struct subdrv_ctx *ctx, u64 shutter, u32 frame_len
 {
 	int fine_integ_line = 0;
 	bool gph = !ctx->is_seamless && (ctx->s_ctx.s_gph != NULL);
+	u32 lastShutter = 0;
 
 	ctx->frame_length = frame_length ? frame_length : ctx->min_frame_length;
 	check_current_scenario_id_bound(ctx);
@@ -1167,6 +1185,7 @@ void set_shutter_frame_length(struct subdrv_ctx *ctx, u64 shutter, u32 frame_len
 	/* check boundary of framelength */
 	ctx->frame_length = max((u32)shutter + ctx->s_ctx.exposure_margin, ctx->min_frame_length);
 	ctx->frame_length = min(ctx->frame_length, ctx->s_ctx.frame_length_max);
+	lastShutter = ctx->exposure[0];
 	/* restore shutter */
 	memset(ctx->exposure, 0, sizeof(ctx->exposure));
 	ctx->exposure[0] = (u32) shutter;
@@ -1178,9 +1197,22 @@ void set_shutter_frame_length(struct subdrv_ctx *ctx, u64 shutter, u32 frame_len
 		set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_auto_extend, 0x01);
 	/* write framelength */
 	if (set_auto_flicker(ctx, 0) || frame_length || !ctx->s_ctx.reg_addr_auto_extend)
+	{
+		if (ctx->s_ctx.sensor_id == OV50D40_SENSOR_ID || ctx->s_ctx.sensor_id == OV50D40OFILM_SENSOR_ID)
+		{
+			if ((lastShutter <= ctx->frame_length) && (ctx->frame_length <= (lastShutter + 16)))
+				ctx->frame_length = lastShutter + 16;
+		}
 		write_frame_length(ctx, ctx->frame_length);
+	}
 	/* write shutter */
 	set_long_exposure(ctx);
+	if(shutter >= (ctx->s_ctx.frame_length_max - ctx->s_ctx.exposure_margin) &&
+	   ctx->s_ctx.sensor_id == S5KGN9SP_SENSOR_ID) {
+	   shutter = shutter / 128;
+	   ctx->exposure[0] = (u32) shutter;
+	   DRV_LOG(ctx,"Enter Long Exposure Mode ctx->exposure[0]=0x%x", ctx->exposure[0]);
+	}
 	if (ctx->s_ctx.reg_addr_exposure[0].addr[2]) {
 		set_i2c_buffer(ctx,	ctx->s_ctx.reg_addr_exposure[0].addr[0],
 			(ctx->exposure[0] >> 16) & 0xFF);
@@ -1238,6 +1270,8 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	bool gph = !ctx->is_seamless && (ctx->s_ctx.s_gph != NULL);
 	u32 rg_shutters[3] = {0};
 	u32 cit_step = 0;
+	bool is_Flicker = false;
+	u32 lastShutter = 0;
 
 	ctx->frame_length = frame_length ? frame_length : ctx->min_frame_length;
 	if (exp_cnt > ARRAY_SIZE(ctx->exposure)) {
@@ -1287,6 +1321,7 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 		ctx->frame_length = max(ctx->frame_length, calc_fl[i]);
 	ctx->frame_length =	max(ctx->frame_length, ctx->min_frame_length);
 	ctx->frame_length =	min(ctx->frame_length, ctx->s_ctx.frame_length_max);
+	lastShutter = ctx->exposure[0];
 	/* restore shutter */
 	memset(ctx->exposure, 0, sizeof(ctx->exposure));
 	for (i = 0; i < exp_cnt; i++)
@@ -1298,8 +1333,16 @@ void set_multi_shutter_frame_length(struct subdrv_ctx *ctx,
 	if (ctx->s_ctx.reg_addr_auto_extend)
 		set_i2c_buffer(ctx, ctx->s_ctx.reg_addr_auto_extend, 0x01);
 	/* write framelength */
-	if (set_auto_flicker(ctx, 0) || frame_length || !ctx->s_ctx.reg_addr_auto_extend)
+	is_Flicker = set_auto_flicker(ctx, 0);
+	if (is_Flicker || frame_length || !ctx->s_ctx.reg_addr_auto_extend)
+	{
+		if(ctx->s_ctx.sensor_id == OV50D40_SENSOR_ID || ctx->s_ctx.sensor_id == OV50D40OFILM_SENSOR_ID)
+		{
+			if ((lastShutter <= ctx->frame_length) && (ctx->frame_length <= (lastShutter + 16)))
+				ctx->frame_length = lastShutter + 16;
+		}
 		write_frame_length(ctx, ctx->frame_length);
+	}
 	/* write shutter */
 	switch (exp_cnt) {
 	case 1:
@@ -2005,11 +2048,32 @@ void check_stream_off(struct subdrv_ctx *ctx)
 
 	if (!ctx->s_ctx.reg_addr_frame_count)
 		return;
-	for (i = 0; i < timeout; i++) {
-		framecnt = subdrv_i2c_rd_u8(ctx, ctx->s_ctx.reg_addr_frame_count);
-		if (framecnt == 0xFF)
-			return;
-		mdelay(1);
+	if (ctx->s_ctx.sensor_id == S5KGN9SP_SENSOR_ID) {
+	    while (1)
+	    {
+	        framecnt = subdrv_i2c_rd_u8(ctx, ctx->s_ctx.reg_addr_frame_count); /* waiting for sensor to  stop output  then  set the  setting */
+	        if ((framecnt & 0xff) == 0xFF)
+	        {
+	            DRV_LOG(ctx, "StreamOff OK at framecnt=%d.\n", framecnt);
+	            break;
+	        }
+	        else
+	        {
+	            i++;
+	            DRV_LOG(ctx, "StreamOFF is not on, %d, i=%d", framecnt, i);
+	            mdelay(1);
+	            if(i == 5000)
+	                break;
+	        }
+	    }
+	    return;
+	} else {
+	    for (i = 0; i < timeout; i++) {
+	        framecnt = subdrv_i2c_rd_u8(ctx, ctx->s_ctx.reg_addr_frame_count);
+	        if (framecnt == 0xFF)
+	            return;
+	        mdelay(1);
+	    }
 	}
 	DRV_LOGE(ctx, "stream off fail!,cur_fps:%u,timeout:%u\n",
 		ctx->current_fps, timeout);
@@ -2021,6 +2085,8 @@ void streaming_control(struct subdrv_ctx *ctx, bool enable)
 	u64 stream_ctrl_delay = 0;
 	struct adaptor_ctx *_adaptor_ctx = NULL;
 	struct v4l2_subdev *sd = NULL;
+	int i = 0;
+	int framecnt = 0;
 
 	DRV_LOG(ctx, "E! enable:%u\n", enable);
 
@@ -2055,8 +2121,33 @@ void streaming_control(struct subdrv_ctx *ctx, bool enable)
 	}
 
 	if (enable) {
-		set_dummy(ctx);
+		if(ctx->s_ctx.sensor_id == GC08A8_SENSOR_ID || ctx->s_ctx.sensor_id == GC08A8XL_SENSOR_ID){
+			subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_frame_length.addr[0], ctx->frame_length >> 8);
+			subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_frame_length.addr[1], ctx->frame_length & 0xFF);
+		}
+		else
+			set_dummy(ctx);
 		subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_stream, 0x01);
+		if (ctx->s_ctx.sensor_id == S5KGN9SP_SENSOR_ID) {
+		    while (1)
+		    {
+		        framecnt = subdrv_i2c_rd_u8(ctx, ctx->s_ctx.reg_addr_frame_count); /* waiting for sensor to  stop output  then  set the  setting */
+		        DRV_LOG(ctx, "framecnt %d ", framecnt);
+		        if ((framecnt & 0xff) != 0xFF)
+		        {
+		            DRV_LOG(ctx, "StreamON OK at framecnt=%d.\n", framecnt);
+		            break;
+		        }
+		        else
+		        {
+		            i++;
+		            DRV_LOG(ctx, "StreamOn is not on, %d, i=%d", framecnt,i);
+		            mdelay(1);
+		            if(i == 5000)
+		                break;
+		        }
+		    }
+		}
 		ctx->stream_ctrl_start_time = ktime_get_boottime_ns();
 	} else {
 		ctx->stream_ctrl_end_time = ktime_get_boottime_ns();
@@ -2725,7 +2816,7 @@ int common_get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id)
 				subdrv_i2c_rd_u8(ctx, addr_l);
 			if (addr_ll)
 				*sensor_id = ((*sensor_id) << 8) | subdrv_i2c_rd_u8(ctx, addr_ll);
-			DRV_LOG(ctx, "i2c_write_id:0x%x sensor_id(cur/exp):0x%x/0x%x\n",
+			pr_info("i2c_write_id:0x%x sensor_id(cur/exp):0x%x/0x%x\n",
 				ctx->i2c_write_id, *sensor_id, ctx->s_ctx.sensor_id);
 			if (*sensor_id == ctx->s_ctx.sensor_id)
 				return ERROR_NONE;
@@ -2821,16 +2912,22 @@ void subdrv_ctx_init(struct subdrv_ctx *ctx)
 void sensor_init(struct subdrv_ctx *ctx)
 {
 	u64 time_boot_begin = 0;
-
+	int i;
 	/* write init setting */
 	if (ctx->s_ctx.init_setting_table != NULL) {
 		DRV_LOG_MUST(ctx, "E: size:%u\n", ctx->s_ctx.init_setting_len);
 
 		if (ctx->power_on_profile_en)
 			time_boot_begin = ktime_get_boottime_ns();
-
-		i2c_table_write(ctx, ctx->s_ctx.init_setting_table, ctx->s_ctx.init_setting_len);
-
+		if(ctx->s_ctx.sensor_id == GC08A8_SENSOR_ID || ctx->s_ctx.sensor_id == GC08A8XL_SENSOR_ID)
+		{
+			for (i = 0; i < ctx->s_ctx.init_setting_len; ){
+					write_cmos_sensor_8(ctx, ctx->s_ctx.init_setting_table[i], ctx->s_ctx.init_setting_table[i+1]);
+					i = i+2;
+					}
+		}else{
+			i2c_table_write(ctx, ctx->s_ctx.init_setting_table,ctx->s_ctx.init_setting_len);
+		}
 		if (ctx->power_on_profile_en) {
 			ctx->sensor_pw_on_profile.i2c_init_period =
 				ktime_get_boottime_ns() - time_boot_begin;
@@ -2861,7 +2958,6 @@ int common_open(struct subdrv_ctx *ctx)
 	/* get sensor id */
 	if (common_get_imgsensor_id(ctx, &sensor_id) != ERROR_NONE)
 		return ERROR_SENSOR_CONNECT_FAIL;
-
 	/* initail setting */
 	if (ctx->s_ctx.aov_sensor_support && !ctx->s_ctx.init_in_open)
 		DRV_LOG_MUST(ctx, "sensor init not in open stage!\n");
@@ -3192,6 +3288,7 @@ int common_control(struct subdrv_ctx *ctx,
 	u16 size = 0;
 	u16 addr = 0;
 	u64 time_boot_begin = 0;
+	int i;
 	struct eeprom_info_struct *info = ctx->s_ctx.eeprom_info;
 	struct adaptor_ctx *_adaptor_ctx = NULL;
 	struct v4l2_subdev *sd = NULL;
@@ -3233,8 +3330,16 @@ int common_control(struct subdrv_ctx *ctx,
 		switch (ctx->sensor_mode_ops) {
 		case AOV_MODE_CTRL_OPS_SENSING_CTRL:
 		default:
-			i2c_table_write(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table,
+			if(ctx->s_ctx.sensor_id == GC08A8_SENSOR_ID || ctx->s_ctx.sensor_id == GC08A8XL_SENSOR_ID)
+			{
+				for (i = 0; i < ctx->s_ctx.mode[scenario_id].mode_setting_len; ){
+				write_cmos_sensor_8(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table[i], ctx->s_ctx.mode[scenario_id].mode_setting_table[i+1]);
+				i = i+2;
+				}
+			}else{
+				i2c_table_write(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table,
 				ctx->s_ctx.mode[scenario_id].mode_setting_len);
+			}
 			break;
 		case AOV_MODE_CTRL_OPS_MONTION_DETECTION_CTRL:
 			/* set eint gpio */

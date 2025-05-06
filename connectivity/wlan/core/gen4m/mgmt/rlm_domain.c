@@ -298,58 +298,54 @@ char *g_au1TxPwrDefaultSetting[] = {
 /* Define mapping tables between country code and its channel set
  */
 static const uint16_t g_u2CountryGroup0[] = {
-	COUNTRY_CODE_AD, COUNTRY_CODE_AF, COUNTRY_CODE_AO, COUNTRY_CODE_AZ,
-	COUNTRY_CODE_BF, COUNTRY_CODE_BI, COUNTRY_CODE_BJ, COUNTRY_CODE_BT,
-	COUNTRY_CODE_BW, COUNTRY_CODE_CD, COUNTRY_CODE_CF, COUNTRY_CODE_CG,
-	COUNTRY_CODE_CI, COUNTRY_CODE_CM, COUNTRY_CODE_CV, COUNTRY_CODE_DJ,
-	COUNTRY_CODE_FO, COUNTRY_CODE_GA, COUNTRY_CODE_GE, COUNTRY_CODE_GF,
-	COUNTRY_CODE_GG, COUNTRY_CODE_GL, COUNTRY_CODE_GM, COUNTRY_CODE_GN,
-	COUNTRY_CODE_GP, COUNTRY_CODE_GQ, COUNTRY_CODE_GW, COUNTRY_CODE_IM,
-	COUNTRY_CODE_IQ, COUNTRY_CODE_JE, COUNTRY_CODE_KE, COUNTRY_CODE_KM,
-	COUNTRY_CODE_KW, COUNTRY_CODE_LB, COUNTRY_CODE_LI, COUNTRY_CODE_LS,
-	COUNTRY_CODE_LY, COUNTRY_CODE_MC, COUNTRY_CODE_MD, COUNTRY_CODE_ME,
-	COUNTRY_CODE_MK, COUNTRY_CODE_ML, COUNTRY_CODE_MQ, COUNTRY_CODE_MR,
-	COUNTRY_CODE_MU, COUNTRY_CODE_MZ, COUNTRY_CODE_NE, COUNTRY_CODE_NR,
-	COUNTRY_CODE_PF, COUNTRY_CODE_PM, COUNTRY_CODE_RE, COUNTRY_CODE_RO,
-	COUNTRY_CODE_RS, COUNTRY_CODE_SM, COUNTRY_CODE_SO, COUNTRY_CODE_ST,
-	COUNTRY_CODE_SZ, COUNTRY_CODE_TD, COUNTRY_CODE_TF, COUNTRY_CODE_TG,
-	COUNTRY_CODE_TJ, COUNTRY_CODE_TM, COUNTRY_CODE_TR, COUNTRY_CODE_TV,
-	COUNTRY_CODE_TZ, COUNTRY_CODE_VA, COUNTRY_CODE_YT, COUNTRY_CODE_ZM
+	COUNTRY_CODE_AF, COUNTRY_CODE_AO, COUNTRY_CODE_AZ, COUNTRY_CODE_BF,
+	COUNTRY_CODE_BI, COUNTRY_CODE_BJ, COUNTRY_CODE_BT, COUNTRY_CODE_BW,
+	COUNTRY_CODE_CD, COUNTRY_CODE_CF, COUNTRY_CODE_CG, COUNTRY_CODE_CI,
+	COUNTRY_CODE_CM, COUNTRY_CODE_CV, COUNTRY_CODE_DJ, COUNTRY_CODE_FO,
+	COUNTRY_CODE_GA, COUNTRY_CODE_GF, COUNTRY_CODE_GG, COUNTRY_CODE_GL,
+	COUNTRY_CODE_GM, COUNTRY_CODE_GN, COUNTRY_CODE_GP, COUNTRY_CODE_GQ,
+	COUNTRY_CODE_GW, COUNTRY_CODE_IM, COUNTRY_CODE_IQ, COUNTRY_CODE_JE,
+	COUNTRY_CODE_KE, COUNTRY_CODE_KM, COUNTRY_CODE_KW, COUNTRY_CODE_LB,
+	COUNTRY_CODE_LS, COUNTRY_CODE_LY, COUNTRY_CODE_ML, COUNTRY_CODE_MQ,
+	COUNTRY_CODE_MR, COUNTRY_CODE_MU, COUNTRY_CODE_MZ, COUNTRY_CODE_NE,
+	COUNTRY_CODE_NR, COUNTRY_CODE_PF, COUNTRY_CODE_PM, COUNTRY_CODE_RE,
+	COUNTRY_CODE_SO, COUNTRY_CODE_ST, COUNTRY_CODE_SZ, COUNTRY_CODE_TD,
+	COUNTRY_CODE_TF, COUNTRY_CODE_TG, COUNTRY_CODE_TJ, COUNTRY_CODE_TM,
+	COUNTRY_CODE_TV, COUNTRY_CODE_TZ, COUNTRY_CODE_YT, COUNTRY_CODE_ZM
 };
 static const uint16_t g_u2CountryGroup1[] = {
-	COUNTRY_CODE_AG, COUNTRY_CODE_AI, COUNTRY_CODE_AM, COUNTRY_CODE_AN,
-	COUNTRY_CODE_AQ, COUNTRY_CODE_AW, COUNTRY_CODE_AX, COUNTRY_CODE_BB,
-	COUNTRY_CODE_BM, COUNTRY_CODE_BN, COUNTRY_CODE_BO, COUNTRY_CODE_BS,
+	COUNTRY_CODE_AG, COUNTRY_CODE_AI, COUNTRY_CODE_AN, COUNTRY_CODE_AQ,
+	COUNTRY_CODE_AW, COUNTRY_CODE_AX, COUNTRY_CODE_BB, COUNTRY_CODE_BM,
+	COUNTRY_CODE_BN, COUNTRY_CODE_BO, COUNTRY_CODE_BS, COUNTRY_CODE_ZA,
 	COUNTRY_CODE_BV, COUNTRY_CODE_BZ, COUNTRY_CODE_CO, COUNTRY_CODE_DO,
 	COUNTRY_CODE_EC, COUNTRY_CODE_FJ, COUNTRY_CODE_FK, COUNTRY_CODE_FM,
 	COUNTRY_CODE_GD, COUNTRY_CODE_GI, COUNTRY_CODE_GS, COUNTRY_CODE_GY,
-	COUNTRY_CODE_HN, COUNTRY_CODE_HT, COUNTRY_CODE_IL, COUNTRY_CODE_IN,
-	COUNTRY_CODE_IO, COUNTRY_CODE_IR, COUNTRY_CODE_KG, COUNTRY_CODE_KH,
-	COUNTRY_CODE_KN, COUNTRY_CODE_KP, COUNTRY_CODE_KY, COUNTRY_CODE_KZ,
-	COUNTRY_CODE_LA, COUNTRY_CODE_LC, COUNTRY_CODE_LK, COUNTRY_CODE_LR,
-	COUNTRY_CODE_MH, COUNTRY_CODE_MN, COUNTRY_CODE_MO, COUNTRY_CODE_MS,
-	COUNTRY_CODE_MW, COUNTRY_CODE_NA, COUNTRY_CODE_NI, COUNTRY_CODE_NU,
-	COUNTRY_CODE_PA, COUNTRY_CODE_PG, COUNTRY_CODE_PH, COUNTRY_CODE_PN,
-	COUNTRY_CODE_PS, COUNTRY_CODE_PW, COUNTRY_CODE_PY, COUNTRY_CODE_QA,
-	COUNTRY_CODE_RW, COUNTRY_CODE_SB, COUNTRY_CODE_SC, COUNTRY_CODE_SD,
-	COUNTRY_CODE_SG, COUNTRY_CODE_SH, COUNTRY_CODE_SJ, COUNTRY_CODE_SN,
-	COUNTRY_CODE_SS, COUNTRY_CODE_SV, COUNTRY_CODE_SX, COUNTRY_CODE_SY,
-	COUNTRY_CODE_TC, COUNTRY_CODE_TH, COUNTRY_CODE_TK, COUNTRY_CODE_TO,
-	COUNTRY_CODE_TT, COUNTRY_CODE_UA, COUNTRY_CODE_VC, COUNTRY_CODE_VG,
-	COUNTRY_CODE_VN, COUNTRY_CODE_VU, COUNTRY_CODE_WS, COUNTRY_CODE_YE,
-	COUNTRY_CODE_ZA
+	COUNTRY_CODE_HN, COUNTRY_CODE_HT, COUNTRY_CODE_IL, COUNTRY_CODE_IO,
+	COUNTRY_CODE_IR, COUNTRY_CODE_KG, COUNTRY_CODE_KH, COUNTRY_CODE_KN,
+	COUNTRY_CODE_KP, COUNTRY_CODE_KY, COUNTRY_CODE_KZ, COUNTRY_CODE_LA,
+	COUNTRY_CODE_LC, COUNTRY_CODE_LK, COUNTRY_CODE_LR, COUNTRY_CODE_MH,
+	COUNTRY_CODE_MN, COUNTRY_CODE_MO, COUNTRY_CODE_MS, COUNTRY_CODE_MW,
+	COUNTRY_CODE_NA, COUNTRY_CODE_NI, COUNTRY_CODE_NU, COUNTRY_CODE_PA,
+	COUNTRY_CODE_PG, COUNTRY_CODE_PH, COUNTRY_CODE_PN, COUNTRY_CODE_PS,
+	COUNTRY_CODE_PW, COUNTRY_CODE_PY, COUNTRY_CODE_QA, COUNTRY_CODE_RW,
+	COUNTRY_CODE_SB, COUNTRY_CODE_SC, COUNTRY_CODE_SD, COUNTRY_CODE_SG,
+	COUNTRY_CODE_SH, COUNTRY_CODE_SJ, COUNTRY_CODE_SN, COUNTRY_CODE_SS,
+	COUNTRY_CODE_SV, COUNTRY_CODE_SX, COUNTRY_CODE_SY, COUNTRY_CODE_TC,
+	COUNTRY_CODE_TH, COUNTRY_CODE_TK, COUNTRY_CODE_TO, COUNTRY_CODE_TT,
+	COUNTRY_CODE_VC, COUNTRY_CODE_VG, COUNTRY_CODE_VN, COUNTRY_CODE_VU,
+	COUNTRY_CODE_WS, COUNTRY_CODE_YE
 };
 static const uint16_t g_u2CountryGroup2[] = {
-	COUNTRY_CODE_BY, COUNTRY_CODE_ET, COUNTRY_CODE_EU, COUNTRY_CODE_MF,
-	COUNTRY_CODE_MG, COUNTRY_CODE_MM, COUNTRY_CODE_OM, COUNTRY_CODE_SL,
-	COUNTRY_CODE_SR, COUNTRY_CODE_ZW
+	COUNTRY_CODE_ET, COUNTRY_CODE_EU, COUNTRY_CODE_MF, COUNTRY_CODE_MG,
+	COUNTRY_CODE_MM, COUNTRY_CODE_OM, COUNTRY_CODE_SL, COUNTRY_CODE_SR,
+	COUNTRY_CODE_ZW
 };
 static const uint16_t g_u2CountryGroup3[] = {
 	COUNTRY_CODE_CU, COUNTRY_CODE_DM, COUNTRY_CODE_GT
 };
 static const uint16_t g_u2CountryGroup4[] = {
 	COUNTRY_CODE_AR, COUNTRY_CODE_CC, COUNTRY_CODE_CX, COUNTRY_CODE_HM,
-	COUNTRY_CODE_MX, COUNTRY_CODE_NF
+	COUNTRY_CODE_NF
 };
 static const uint16_t g_u2CountryGroup5[] = {
 	COUNTRY_CODE_BH, COUNTRY_CODE_CN, COUNTRY_CODE_MV, COUNTRY_CODE_UY,
@@ -392,15 +388,7 @@ static const uint16_t g_u2CountryGroup17[] = {
 	COUNTRY_CODE_TN
 };
 static const uint16_t g_u2CountryGroup18[] = {
-	COUNTRY_CODE_AL, COUNTRY_CODE_AT, COUNTRY_CODE_BA, COUNTRY_CODE_BE,
-	COUNTRY_CODE_BG, COUNTRY_CODE_CH, COUNTRY_CODE_CY, COUNTRY_CODE_CZ,
-	COUNTRY_CODE_DE, COUNTRY_CODE_DK, COUNTRY_CODE_EE, COUNTRY_CODE_ES,
-	COUNTRY_CODE_FI, COUNTRY_CODE_FR, COUNTRY_CODE_GR, COUNTRY_CODE_HR,
-	COUNTRY_CODE_HU, COUNTRY_CODE_IE, COUNTRY_CODE_IS, COUNTRY_CODE_IT,
-	COUNTRY_CODE_LT, COUNTRY_CODE_LU, COUNTRY_CODE_LV, COUNTRY_CODE_MT,
-	COUNTRY_CODE_NC, COUNTRY_CODE_NL, COUNTRY_CODE_NO, COUNTRY_CODE_PL,
-	COUNTRY_CODE_PT, COUNTRY_CODE_SE, COUNTRY_CODE_SI, COUNTRY_CODE_SK,
-	COUNTRY_CODE_WF, COUNTRY_CODE_XK
+	COUNTRY_CODE_CY, COUNTRY_CODE_NC, COUNTRY_CODE_WF, COUNTRY_CODE_XK
 };
 static const uint16_t g_u2CountryGroup19[] = {
 	COUNTRY_CODE_AE, COUNTRY_CODE_HK
@@ -412,8 +400,7 @@ static const uint16_t g_u2CountryGroup21[] = {
 	COUNTRY_CODE_ID, COUNTRY_CODE_NP
 };
 static const uint16_t g_u2CountryGroup22[] = {
-	COUNTRY_CODE_BR, COUNTRY_CODE_CR, COUNTRY_CODE_KR, COUNTRY_CODE_PE,
-	COUNTRY_CODE_TW
+	COUNTRY_CODE_CR, COUNTRY_CODE_PE, COUNTRY_CODE_TW
 };
 static const uint16_t g_u2CountryGroup23[] = {
 	COUNTRY_CODE_GU, COUNTRY_CODE_MP, COUNTRY_CODE_UM, COUNTRY_CODE_VI
@@ -425,11 +412,38 @@ static const uint16_t g_u2CountryGroup25[] = {
 	COUNTRY_CODE_SA
 };
 static const uint16_t g_u2CountryGroup26[] = {
-	COUNTRY_CODE_AS, COUNTRY_CODE_US
+	COUNTRY_CODE_AS
 };
 static const uint16_t g_u2CountryGroup27[] = {
-	COUNTRY_CODE_CK, COUNTRY_CODE_CL, COUNTRY_CODE_GB, COUNTRY_CODE_KI,
-	COUNTRY_CODE_NZ, COUNTRY_CODE_TL
+	COUNTRY_CODE_CK, COUNTRY_CODE_CL, COUNTRY_CODE_KI, COUNTRY_CODE_NZ,
+	COUNTRY_CODE_TL
+};
+static const uint16_t g_u2CountryGroup28[] = {
+	COUNTRY_CODE_MX
+};
+static const uint16_t g_u2CountryGroup29[] = {
+	COUNTRY_CODE_US
+};
+static const uint16_t g_u2CountryGroup30[] = {
+	COUNTRY_CODE_IN
+};
+static const uint16_t g_u2CountryGroup31[] = {
+	COUNTRY_CODE_KR, COUNTRY_CODE_BR
+};
+// for EU
+static const uint16_t g_u2CountryGroup32[] = {
+	COUNTRY_CODE_GB, COUNTRY_CODE_IE, COUNTRY_CODE_NL, COUNTRY_CODE_BE,
+	COUNTRY_CODE_LU, COUNTRY_CODE_FR, COUNTRY_CODE_MC, COUNTRY_CODE_PL,
+	COUNTRY_CODE_CZ, COUNTRY_CODE_SK, COUNTRY_CODE_HU, COUNTRY_CODE_DE,
+	COUNTRY_CODE_AT, COUNTRY_CODE_CH, COUNTRY_CODE_LI, COUNTRY_CODE_EE,
+	COUNTRY_CODE_LV, COUNTRY_CODE_LT, COUNTRY_CODE_BY, COUNTRY_CODE_UA,
+	COUNTRY_CODE_MD, COUNTRY_CODE_FI, COUNTRY_CODE_SE, COUNTRY_CODE_NO,
+	COUNTRY_CODE_IS, COUNTRY_CODE_DK, COUNTRY_CODE_IT, COUNTRY_CODE_ES,
+	COUNTRY_CODE_PT, COUNTRY_CODE_GR, COUNTRY_CODE_VA, COUNTRY_CODE_SM,
+	COUNTRY_CODE_MT, COUNTRY_CODE_AD, COUNTRY_CODE_TR, COUNTRY_CODE_RO,
+	COUNTRY_CODE_ME, COUNTRY_CODE_BG, COUNTRY_CODE_MK, COUNTRY_CODE_AL,
+	COUNTRY_CODE_BA, COUNTRY_CODE_SI, COUNTRY_CODE_HR, COUNTRY_CODE_RS,
+	COUNTRY_CODE_GE, COUNTRY_CODE_AM
 };
 
 #if (CFG_SUPPORT_SINGLE_SKU == 1)
@@ -889,12 +903,11 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 	}
 	,
 	{
+		// for Japan
 		(uint16_t *) g_u2CountryGroup13, sizeof(g_u2CountryGroup13) / 2,
 		{
 			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
 			,	/*CH_SET_2G4_1_13 */
-			{82, BAND_2G4, CHNL_SPAN_5, 14, 1, FALSE}
-			,	/*CH_SET_2G4_14_1 */
 			{115, BAND_5G, CHNL_SPAN_20, 36, 4, FALSE}
 			,	/*CH_SET_UNII_LOW_36_48 */
 			{118, BAND_5G, CHNL_SPAN_20, 52, 4, TRUE}
@@ -930,6 +943,7 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 	}
 	,
 	{
+		// for Russia ~ 5
 		(uint16_t *) g_u2CountryGroup15, sizeof(g_u2CountryGroup15) / 2,
 		{
 			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
@@ -1101,6 +1115,7 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 	}
 	,
 	{
+		// for Australia ~ 7
 		(uint16_t *) g_u2CountryGroup24, sizeof(g_u2CountryGroup24) / 2,
 		{
 			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
@@ -1186,6 +1201,107 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			,	/* 6G_CH_1_93 */
 			{136, BAND_6G, CHNL_SPAN_20, 2, 1, FALSE}
 				/* 6G_CH_2 */
+#endif
+		}
+	}
+	,
+	{
+		// for Mexico
+		(uint16_t *) g_u2CountryGroup28, sizeof(g_u2CountryGroup28) / 2,
+		{
+			{81, BAND_2G4, CHNL_SPAN_5, 1, 11, FALSE}
+			,	/* CH_SET_2G4_1_13 */
+			{115, BAND_5G, CHNL_SPAN_20, 36, 4, FALSE}
+			,	/* CH_SET_UNII_LOW_36_48 */
+			{118, BAND_5G, CHNL_SPAN_20, 52, 4, TRUE}
+			,	/* CH_SET_UNII_MID_52_64 */
+			{121, BAND_5G, CHNL_SPAN_20, 100, 5, TRUE}
+			,	/* CH_SET_UNII_WW_100_116 */
+                        {121, BAND_5G, CHNL_SPAN_20, 132, 4, TRUE}
+			,	/* CH_SET_UNII_WW_132_144 */
+			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
+				/* CH_SET_UNII_UPPER_149_165 */
+		}
+	}
+	,
+	{
+		// for US ~ 7
+		(uint16_t *) g_u2CountryGroup29, sizeof(g_u2CountryGroup29) / 2,
+		{
+			{81, BAND_2G4, CHNL_SPAN_5, 1, 11, FALSE}
+			,	/* CH_SET_2G4_1_11 */
+			{115, BAND_5G, CHNL_SPAN_20, 36, 4, FALSE}
+			,	/* CH_SET_UNII_LOW_36_48 */
+			{118, BAND_5G, CHNL_SPAN_20, 52, 4, TRUE}
+			,	/* CH_SET_UNII_MID_52_64 */
+			{121, BAND_5G, CHNL_SPAN_20, 100, 12, TRUE}
+			,	/* CH_SET_UNII_WW_100_144 */
+			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
+				/* CH_SET_UNII_UPPER_149_165 */
+#if (CFG_SUPPORT_WIFI_6G == 1)
+			,
+			{131, BAND_6G, CHNL_SPAN_20, 1, 59, FALSE}
+			,	/* 6G_CH_1_233 */
+			{136, BAND_6G, CHNL_SPAN_20, 2, 1, FALSE}
+				/* 6G_CH_2 */
+#endif
+		}
+	}
+	,
+	{
+		// for India
+		(uint16_t *) g_u2CountryGroup30, sizeof(g_u2CountryGroup30) / 2,
+		{
+			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
+			,	/* CH_SET_2G4_1_13 */
+			{115, BAND_5G, CHNL_SPAN_20, 36, 4, FALSE}
+			,	/* CH_SET_UNII_LOW_36_48 */
+			{118, BAND_5G, CHNL_SPAN_20, 52, 4, TRUE}
+			,	/* CH_SET_UNII_MID_52_64 */
+			{121, BAND_5G, CHNL_SPAN_20, 100, 11, TRUE}
+			,	/* CH_SET_UNII_WW_100_140 */
+			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
+			,	/* CH_SET_UNII_UPPER_149_165 */
+			{0, BAND_NULL, 0, 0, 0, FALSE}
+		}
+	}
+	,
+	{
+		// for Brazil ~ 6
+		(uint16_t *) g_u2CountryGroup31, sizeof(g_u2CountryGroup31) / 2,
+		{
+			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
+			,	/* CH_SET_2G4_1_13 */
+			{115, BAND_5G, CHNL_SPAN_20, 36, 4, FALSE}
+			,	/* CH_SET_UNII_LOW_36_48 */
+			{118, BAND_5G, CHNL_SPAN_20, 52, 4, TRUE}
+			,	/* CH_SET_UNII_MID_52_64 */
+			{121, BAND_5G, CHNL_SPAN_20, 100, 12, TRUE}
+			,	/* CH_SET_UNII_WW_100_144 */
+			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
+			,	/* CH_SET_UNII_UPPER_149_165 */
+			{0, BAND_NULL, 0, 0, 0, FALSE}
+		}
+	}
+	,
+	{
+		// for Europe ~ 6
+		(uint16_t *) g_u2CountryGroup32, sizeof(g_u2CountryGroup32) / 2,
+		{
+			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
+			,	/* CH_SET_2G4_1_13 */
+			{115, BAND_5G, CHNL_SPAN_20, 36, 4, FALSE}
+			,	/* CH_SET_UNII_LOW_36_48 */
+			{118, BAND_5G, CHNL_SPAN_20, 52, 4, TRUE}
+			,	/* CH_SET_UNII_MID_52_64 */
+			{121, BAND_5G, CHNL_SPAN_20, 100, 11, TRUE}
+			,	/* CH_SET_UNII_WW_100_140 */
+			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
+				/* CH_SET_UNII_UPPER_149_165 */
+#if (CFG_SUPPORT_WIFI_6G == 1)
+			,
+			{131, BAND_6G, CHNL_SPAN_20, 1, 24, FALSE}
+				/* 6G_CH_1_93 */
 #endif
 		}
 	}
@@ -1364,6 +1480,8 @@ static const uint16_t g_u2IndoorType6[] = {
 	COUNTRY_CODE_MP, COUNTRY_CODE_AS, COUNTRY_CODE_PR,
 };
 
+uint32_t project_check = 0;
+EXPORT_SYMBOL(project_check);
 /*******************************************************************************
  *                           P R I V A T E   D A T A
  *******************************************************************************
@@ -3689,34 +3807,75 @@ uint16_t rlmDomainPwrLimitDefaultTableDecision(struct ADAPTER *prAdapter,
 	uint16_t u2PwrLmtDefaultTalbeSize = sizeof(g_rRlmPowerLimitDefault) /
 			sizeof(struct COUNTRY_POWER_LIMIT_TABLE_DEFAULT);
 
-	for (i = 0; i < COUNTRY_LIMIT_GROUP_NUM; i++) {
-		prCountryGrpInfo = &arSupportCountryPowerLmtGrps[i];
+	if (project_check == 1) {
+		DBGLOG(RLM, INFO, "%s project_check:%u, %u, %zu\n", __func__, project_check, u2CountryCode, COUNTRY_LIMIT_GROUP_NUM_24121);
+		for (i = 0; i < COUNTRY_LIMIT_GROUP_NUM_24121; i++) {
+			prCountryGrpInfo = &arSupportCountryPowerLmtGrps_24121[i];
 
-		if (!prCountryGrpInfo->u4CountryNum ||
-			!prCountryGrpInfo->prGroup)
-			continue;
+			if (!prCountryGrpInfo->u4CountryNum ||
+				!prCountryGrpInfo->prGroup)
+				continue;
 
-		for (j = 0; j < prCountryGrpInfo->u4CountryNum; j++) {
-			WLAN_GET_FIELD_BE16(
-				&prCountryGrpInfo->prGroup[j].aucCountryCode[0],
-				&u2CountryCodeTable);
-
-			if (u2CountryCodeTable == u2CountryCode) {
+			for (j = 0; j < prCountryGrpInfo->u4CountryNum; j++) {
 				WLAN_GET_FIELD_BE16(
-					&prCountryGrpInfo->aucGroupCode[0],
-					&u2CountryCode);
-				break;
+					&prCountryGrpInfo->prGroup[j].aucCountryCode[0],
+					&u2CountryCodeTable);
+				/* Print some information to prove that the modification in rlm_txpower_init.h has taken effect */
+				DBGLOG(RLM, TRACE, "%s u2CountryCodeTable = (%c%c) [%u,%u,%u]\n", __func__, ((u2CountryCodeTable & 0xff00) >> 8), (u2CountryCodeTable & 0x00ff), i, j, prCountryGrpInfo->u4CountryNum);
+				if (u2CountryCodeTable == u2CountryCode) {
+					WLAN_GET_FIELD_BE16(
+						&prCountryGrpInfo->aucGroupCode[0],
+						&u2CountryCode);
+					break;
+				}
 			}
+			if (j < prCountryGrpInfo->u4CountryNum)
+				break;	/* Found */
 		}
-		if (j < prCountryGrpInfo->u4CountryNum)
-			break;	/* Found */
+	}
+	else {
+		DBGLOG(RLM, INFO, "%s project_check:%u, %u, %zu\n", __func__, project_check, u2CountryCode, COUNTRY_LIMIT_GROUP_NUM);
+		for (i = 0; i < COUNTRY_LIMIT_GROUP_NUM; i++) {
+			prCountryGrpInfo = &arSupportCountryPowerLmtGrps[i];
+
+			if (!prCountryGrpInfo->u4CountryNum ||
+				!prCountryGrpInfo->prGroup)
+				continue;
+
+			for (j = 0; j < prCountryGrpInfo->u4CountryNum; j++) {
+				WLAN_GET_FIELD_BE16(
+					&prCountryGrpInfo->prGroup[j].aucCountryCode[0],
+					&u2CountryCodeTable);
+				/* Print some information to prove that the modification in rlm_txpower_init.h has taken effect */
+				DBGLOG(RLM, TRACE, "%s u2CountryCodeTable = (%c%c)\n, [%u,%u,%u]", __func__, ((u2CountryCodeTable & 0xff00) >> 8), (u2CountryCodeTable & 0x00ff), i, j, prCountryGrpInfo->u4CountryNum);
+				if (u2CountryCodeTable == u2CountryCode) {
+					WLAN_GET_FIELD_BE16(
+						&prCountryGrpInfo->aucGroupCode[0],
+						&u2CountryCode);
+					break;
+				}
+			}
+			if (j < prCountryGrpInfo->u4CountryNum)
+				break;	/* Found */
+		}
+
 	}
 
-	if (i >= COUNTRY_LIMIT_GROUP_NUM) {
-		DBGLOG(RLM, TRACE,
-			"Can't find Country = (%c%c) in any group!\n",
-			((u2CountryCode & 0xff00) >> 8),
-			(u2CountryCode & 0x00ff));
+	if (project_check == 1)	{
+		if (i >= COUNTRY_LIMIT_GROUP_NUM_24121) {
+			DBGLOG(RLM, INFO,
+				"Can't find Country = (%c%c) in any group!\n",
+				((u2CountryCode & 0xff00) >> 8),
+				(u2CountryCode & 0x00ff));
+		}
+	}
+	else {
+		if (i >= COUNTRY_LIMIT_GROUP_NUM) {
+			DBGLOG(RLM, INFO,
+				"Can't find Country = (%c%c) in any group!\n",
+				((u2CountryCode & 0xff00) >> 8),
+				(u2CountryCode & 0x00ff));
+		}
 	}
 #if (CFG_SUPPORT_WIFI_6G_PWR_MODE == 1)
 	if (rlmDomainPwrLmt6GPwrModeGet(prAdapter) == PWR_MODE_6G_VLP) {
@@ -4790,6 +4949,18 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 
 	/* Legacy */
 	struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION
+		*prPwrLmtConf_24121 = g_rRlmPowerLimitConfiguration_24121;
+	uint8_t ucPwrLmitConfSize_24121 = sizeof(g_rRlmPowerLimitConfiguration_24121) /
+		sizeof(struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION);
+
+	/* HE */
+	struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_HE
+		*prPwrLmtConfHE_24121 = g_rRlmPowerLimitConfigurationHE_24121;
+	uint8_t ucPwrLmitConfSizeHE_24121 = sizeof(g_rRlmPowerLimitConfigurationHE_24121) /
+		sizeof(struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION_HE);
+
+	/* Legacy */
+	struct COUNTRY_POWER_LIMIT_TABLE_CONFIGURATION
 		*prPwrLmtConf = g_rRlmPowerLimitConfiguration;
 	struct CMD_CHANNEL_POWER_LIMIT *prCmdPwrLimit;
 	uint8_t ucPwrLmitConfSize = sizeof(g_rRlmPowerLimitConfiguration) /
@@ -4887,7 +5058,6 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 	}
 #endif /* #CFG_SUPPORT_WIFI_6G_PWR_MODE */
 
-
 	/*Build power limit cmd by configuration table information */
 	for (k = 0; k < prCmd->ucNum; k++) {
 
@@ -4899,49 +5069,102 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 		if (eType == PWR_LIMIT_TYPE_COMP_11AX) {
 			prCmdPwrLimtHE = &prCmd->u.rChPwrLimtHE[k];
 			ucCentCh = prCmdPwrLimtHE->ucCentralCh;
+			if (k == 1) {
+				/* Print some information to prove that the modification in rlm_txpower_init.h has taken effect */
+				DBGLOG(RLM, INFO, "%s project_check:%u, eType:%d, ucPwrLmitConfSizeHE:%u, ucPwrLmitConfSizeHE_24121:%u, ucNum:%u\n",
+					__func__, project_check, eType, ucPwrLmitConfSizeHE, ucPwrLmitConfSizeHE_24121, prCmd->ucNum);
+				DBGLOG(RLM, INFO, "%s prPwrLmtConfHE[0].aucPwrLimit[0]:%u,  prPwrLmtConfHE_24121[0].aucPwrLimit[0]:%u\n",
+					__func__, prPwrLmtConfHE[0].aucPwrLimit[0], prPwrLmtConfHE_24121[0].aucPwrLimit[0]);
+			}
+			if (project_check == 1) {
+				for (i = 0; i < ucPwrLmitConfSizeHE_24121; i++) {
 
-			for (i = 0; i < ucPwrLmitConfSizeHE; i++) {
+					WLAN_GET_FIELD_BE16(
+						&prPwrLmtConfHE_24121[i].aucCountryCode[0],
+						&u2CountryCodeTable);
 
-				WLAN_GET_FIELD_BE16(
-					&prPwrLmtConfHE[i].aucCountryCode[0],
-					&u2CountryCodeTable);
+					fgChannelValid =
+						rlmDomainCheckChannelEntryValid(
+							prAdapter,
+							BAND_NULL,
+							prPwrLmtConfHE_24121[i].ucCentralCh);
 
-				fgChannelValid =
-					rlmDomainCheckChannelEntryValid(
-						prAdapter,
-						BAND_NULL,
-						prPwrLmtConfHE[i].ucCentralCh);
+					if (u2CountryCodeTable == COUNTRY_CODE_NULL)
+						break;	/*end of configuration table */
+					else if (u2CountryCodeTable
+						!= prCmd->u2CountryCode)
+						continue;
+					else if (fgChannelValid == FALSE)
+						continue;
+					else if (ucCentCh
+						!= prPwrLmtConfHE_24121[i].ucCentralCh)
+						continue;
 
-				if (u2CountryCodeTable == COUNTRY_CODE_NULL)
-					break;	/*end of configuration table */
-				else if (u2CountryCodeTable
-					!= prCmd->u2CountryCode)
-					continue;
-				else if (fgChannelValid == FALSE)
-					continue;
-				else if (ucCentCh
-					!= prPwrLmtConfHE[i].ucCentralCh)
-					continue;
+					/* Choose MINIMUN value from
+					 * Default table & Conf table
+					 * Cmd setting (Default table
+					 * information) and Conf table
+					 * has repetition channel entry,
+					 * ex : Default table (ex: 2.4G,
+					 *      limit = 20dBm) -->
+					 *      ch1~14 limit =20dBm,
+					 * Conf table (ex: ch1, limit =
+					 *      22 dBm) --> ch 1 = 22 dBm
+					 * Conf table (ex: ch2, limit =
+					 *      18 dBm) --> ch 2 = 18 dBm
+					 * Cmd final setting --> ch1 =
+					 *      20dBm, ch2 = 18dBm ch3~14 = 20dBm
+					 */
+					rlmDomainCompareFromConfigTable(
+						&prCmdPwrLimtHE->cPwrLimitRU26L,
+						&prPwrLmtConfHE_24121[i].aucPwrLimit[0],
+						eType);
+				}
+			}
+			else {
+				for (i = 0; i < ucPwrLmitConfSizeHE; i++) {
 
-				/* Choose MINIMUN value from
-				 * Default table & Conf table
-				 * Cmd setting (Default table
-				 * information) and Conf table
-				 * has repetition channel entry,
-				 * ex : Default table (ex: 2.4G,
-				 *      limit = 20dBm) -->
-				 *      ch1~14 limit =20dBm,
-				 * Conf table (ex: ch1, limit =
-				 *      22 dBm) --> ch 1 = 22 dBm
-				 * Conf table (ex: ch2, limit =
-				 *      18 dBm) --> ch 2 = 18 dBm
-				 * Cmd final setting --> ch1 =
-				 *      20dBm, ch2 = 18dBm ch3~14 = 20dBm
-				 */
-				rlmDomainCompareFromConfigTable(
-					&prCmdPwrLimtHE->cPwrLimitRU26L,
-					&prPwrLmtConfHE[i].aucPwrLimit[0],
-					eType);
+					WLAN_GET_FIELD_BE16(
+						&prPwrLmtConfHE[i].aucCountryCode[0],
+						&u2CountryCodeTable);
+
+					fgChannelValid =
+						rlmDomainCheckChannelEntryValid(
+							prAdapter,
+							BAND_NULL,
+							prPwrLmtConfHE[i].ucCentralCh);
+
+					if (u2CountryCodeTable == COUNTRY_CODE_NULL)
+						break;	/*end of configuration table */
+					else if (u2CountryCodeTable
+						!= prCmd->u2CountryCode)
+						continue;
+					else if (fgChannelValid == FALSE)
+						continue;
+					else if (ucCentCh
+						!= prPwrLmtConfHE[i].ucCentralCh)
+						continue;
+
+					/* Choose MINIMUN value from
+					 * Default table & Conf table
+					 * Cmd setting (Default table
+					 * information) and Conf table
+					 * has repetition channel entry,
+					 * ex : Default table (ex: 2.4G,
+					 *      limit = 20dBm) -->
+					 *      ch1~14 limit =20dBm,
+					 * Conf table (ex: ch1, limit =
+					 *      22 dBm) --> ch 1 = 22 dBm
+					 * Conf table (ex: ch2, limit =
+					 *      18 dBm) --> ch 2 = 18 dBm
+					 * Cmd final setting --> ch1 =
+					 *      20dBm, ch2 = 18dBm ch3~14 = 20dBm
+					 */
+					rlmDomainCompareFromConfigTable(
+						&prCmdPwrLimtHE->cPwrLimitRU26L,
+						&prPwrLmtConfHE[i].aucPwrLimit[0],
+						eType);
+				}
 			}
 		} else if (eType == PWR_LIMIT_TYPE_COMP_11AX_BW160) {
 			prCmdPwrLimtHEBW160 = &prCmd->u.rChPwrLimtHEBW160[k];
@@ -5178,57 +5401,118 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 			eType == PWR_LIMIT_TYPE_COMP_11AC_V2) {
 			prCmdPwrLimit = &prCmd->u.rChannelPowerLimit[k];
 			ucCentCh = prCmdPwrLimit->ucCentralCh;
+			if (k == 1) {
+				/* Print some information to prove that the modification in rlm_txpower_init.h has taken effect */
+				DBGLOG(RLM, INFO, "%s project_check:%u, eType:%d, ucPwrLmitConfSize:%u, ucPwrLmitConfSize_24121:%u, ucNum:%u\n",
+					__func__, project_check, eType, ucPwrLmitConfSize, ucPwrLmitConfSize_24121, prCmd->ucNum);
+				DBGLOG(RLM, INFO, "%s prPwrLmtConf[0].aucPwrLimit[4]:%u,  prPwrLmtConf_24121[0].aucPwrLimit[4]:%u\n",
+					__func__, prPwrLmtConf[0].aucPwrLimit[4], prPwrLmtConf_24121[0].aucPwrLimit[4]);
+			}
+			if (project_check == 1) {
+				for (i = 0; i < ucPwrLmitConfSize_24121; i++) {
 
-			for (i = 0; i < ucPwrLmitConfSize; i++) {
+					WLAN_GET_FIELD_BE16(
+						&prPwrLmtConf_24121[i].aucCountryCode[0],
+						&u2CountryCodeTable);
 
-				WLAN_GET_FIELD_BE16(
-					&prPwrLmtConf[i].aucCountryCode[0],
-					&u2CountryCodeTable);
+					fgChannelValid =
+						rlmDomainCheckChannelEntryValid(
+							prAdapter,
+							BAND_NULL,
+							prPwrLmtConf_24121[i].ucCentralCh);
 
-				fgChannelValid =
-					rlmDomainCheckChannelEntryValid(
-						prAdapter,
-						BAND_NULL,
-						prPwrLmtConf[i].ucCentralCh);
+					if (u2CountryCodeTable == COUNTRY_CODE_NULL)
+						break;	/*end of configuration table */
+					else if (u2CountryCodeTable
+						!= prCmd->u2CountryCode)
+						continue;
+					else if (fgChannelValid == FALSE)
+						continue;
+					else if (ucCentCh
+						!= prPwrLmtConf_24121[i].ucCentralCh)
+						continue;
 
-				if (u2CountryCodeTable == COUNTRY_CODE_NULL)
-					break;	/*end of configuration table */
-				else if (u2CountryCodeTable
-					!= prCmd->u2CountryCode)
-					continue;
-				else if (fgChannelValid == FALSE)
-					continue;
-				else if (ucCentCh
-					!= prPwrLmtConf[i].ucCentralCh)
-					continue;
-
-				/* Choose MINIMUN value from
-				 * Default table & Conf table
-				 * Cmd setting (Default table
-				 * information) and Conf table
-				 * has repetition channel entry,
-				 * ex : Default table (ex: 2.4G,
-				 *      limit = 20dBm) -->
-				 *      ch1~14 limit =20dBm,
-				 * Conf table (ex: ch1, limit =
-				 *      22 dBm) --> ch 1 = 22 dBm
-				 * Conf table (ex: ch2, limit =
-				 *      18 dBm) --> ch 2 = 18 dBm
-				 * Cmd final setting --> ch1 =
-				 *      20dBm, ch2 = 18dBm ch3~14 = 20dBm
-				 */
+					/* Choose MINIMUN value from
+					 * Default table & Conf table
+					 * Cmd setting (Default table
+					 * information) and Conf table
+					 * has repetition channel entry,
+					 * ex : Default table (ex: 2.4G,
+					 *      limit = 20dBm) -->
+					 *      ch1~14 limit =20dBm,
+					 * Conf table (ex: ch1, limit =
+					 *      22 dBm) --> ch 1 = 22 dBm
+					 * Conf table (ex: ch2, limit =
+					 *      18 dBm) --> ch 2 = 18 dBm
+					 * Cmd final setting --> ch1 =
+					 *      20dBm, ch2 = 18dBm ch3~14 = 20dBm
+					 */
 #if (CFG_SUPPORT_DYNA_TX_PWR_CTRL_11AC_V2_SETTING == 1)
-				rlmDomainCompareFromConfigTable(
-					&prCmdPwrLimit->cPwrLimitCCK_L,
-					&prPwrLmtConf[i].aucPwrLimit[0],
-					eType);
+					rlmDomainCompareFromConfigTable(
+						&prCmdPwrLimit->cPwrLimitCCK_L,
+						&prPwrLmtConf_24121[i].aucPwrLimit[0],
+						eType);
 #else
-				rlmDomainCompareFromConfigTable(
-					&prCmdPwrLimit->cPwrLimitCCK,
-					&prPwrLmtConf[i].aucPwrLimit[0],
-					eType);
+					rlmDomainCompareFromConfigTable(
+						&prCmdPwrLimit->cPwrLimitCCK,
+						&prPwrLmtConf_24121[i].aucPwrLimit[0],
+						eType);
 #endif /* CFG_SUPPORT_DYNA_TX_PWR_CTRL_11AC_V2_SETTING */
 
+				}
+			}
+			else {
+				for (i = 0; i < ucPwrLmitConfSize; i++) {
+
+					WLAN_GET_FIELD_BE16(
+						&prPwrLmtConf[i].aucCountryCode[0],
+						&u2CountryCodeTable);
+
+					fgChannelValid =
+						rlmDomainCheckChannelEntryValid(
+							prAdapter,
+							BAND_NULL,
+							prPwrLmtConf[i].ucCentralCh);
+
+					if (u2CountryCodeTable == COUNTRY_CODE_NULL)
+						break;	/*end of configuration table */
+					else if (u2CountryCodeTable
+						!= prCmd->u2CountryCode)
+						continue;
+					else if (fgChannelValid == FALSE)
+						continue;
+					else if (ucCentCh
+						!= prPwrLmtConf[i].ucCentralCh)
+						continue;
+
+					/* Choose MINIMUN value from
+					 * Default table & Conf table
+					 * Cmd setting (Default table
+					 * information) and Conf table
+					 * has repetition channel entry,
+					 * ex : Default table (ex: 2.4G,
+					 *      limit = 20dBm) -->
+					 *      ch1~14 limit =20dBm,
+					 * Conf table (ex: ch1, limit =
+					 *      22 dBm) --> ch 1 = 22 dBm
+					 * Conf table (ex: ch2, limit =
+					 *      18 dBm) --> ch 2 = 18 dBm
+					 * Cmd final setting --> ch1 =
+					 *      20dBm, ch2 = 18dBm ch3~14 = 20dBm
+					 */
+#if (CFG_SUPPORT_DYNA_TX_PWR_CTRL_11AC_V2_SETTING == 1)
+					rlmDomainCompareFromConfigTable(
+						&prCmdPwrLimit->cPwrLimitCCK_L,
+						&prPwrLmtConf[i].aucPwrLimit[0],
+						eType);
+#else
+					rlmDomainCompareFromConfigTable(
+						&prCmdPwrLimit->cPwrLimitCCK,
+						&prPwrLmtConf[i].aucPwrLimit[0],
+						eType);
+#endif /* CFG_SUPPORT_DYNA_TX_PWR_CTRL_11AC_V2_SETTING */
+
+				}
 			}
 		}
 	}
@@ -10065,7 +10349,7 @@ void rlmDomainSendPwrLimitCmd(struct ADAPTER *prAdapter)
 #endif /* CFG_SUPPORT_WIFI_6G */
 
 
-	DBGLOG(RLM, TRACE,
+	DBGLOG(RLM, INFO,
 	       "Domain: ValidCC=%c%c, PwrLimitCC=%c%c, PwrLimitChNum=%d\n",
 	       (prAdapter->rWifiVar.u2CountryCode & 0xff00) >> 8,
 	       (prAdapter->rWifiVar.u2CountryCode & 0x00ff),

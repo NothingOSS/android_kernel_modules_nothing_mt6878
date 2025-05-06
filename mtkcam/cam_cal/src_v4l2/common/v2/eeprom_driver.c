@@ -353,6 +353,12 @@ static inline int eeprom_driver_register(struct i2c_client *client,
 
 	ret = 0;
 	pinst = devm_kzalloc(&client->dev, sizeof(*pinst), GFP_KERNEL);
+
+	if (!pinst){
+		dev_info(&client->dev, "kcalloc memory faill %d", __LINE__);
+		pinst = vmalloc(sizeof(*pinst));	
+	}
+
 	if (!pinst)
 		return -ENOMEM;
 

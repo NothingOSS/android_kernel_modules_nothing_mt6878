@@ -2379,7 +2379,9 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 	phys_addr_t new_pgds[MIDGARD_MMU_BOTTOMLEVEL + 1];
 	int l, cur_level, insert_level;
 	struct tagged_addr *start_phys = phys;
-
+#if IS_ENABLED(CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG)
+	int page_num = 0;
+#endif /* CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG */
 	if (mmut->kctx)
 		lockdep_assert_held(&mmut->kctx->reg_lock);
 
@@ -2395,6 +2397,25 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 
 	mutex_lock(&mmut->mmu_lock);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG)
+	if(phys) {
+#if 0
+		dev_err(kbdev->dev, "[MMU][map] va 0x%llx, phys 0x%llx, flag 0x%lx, nr 0x%lx, ctx %d_%d, as %d\n",
+			start_vpfn, as_phys_addr_t(phys[0]), flags, nr,
+			mmut->kctx ? mmut->kctx->tgid : 0,
+			mmut->kctx ? mmut->kctx->id : 0,
+			mmut->kctx ? mmut->kctx->as_nr : MCU_AS_NR);
+#endif
+ 		for(page_num = 0; page_num < nr; page_num++) {
+			phys_addr_t gpu_pa = as_phys_addr_t(phys[page_num]);
+			if(((phys_addr_t)(0x8ea00000) <= gpu_pa && gpu_pa < (phys_addr_t)(0x8f000000)) ||
+				((phys_addr_t)(0xca000000) <= gpu_pa && gpu_pa < (phys_addr_t)(0xce360000))) {
+				dev_err(kbdev->dev, "[MMU][map] %4u: pa violation range<23>(0x8ea00000~0x8f000000)<43>(0xca000000~0xce360000) %llx(%llu) , f 0x%lx\n", page_num, as_phys_addr_t(phys[page_num]), gpu_pa, flags);
+				dump_stack();
+			}
+ 		}
+	}
+#endif /* CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG */
 	while (remain) {
 		unsigned int vindex = insert_vpfn & 0x1FF;
 		unsigned int count = KBASE_MMU_PAGE_ENTRIES - vindex;
@@ -3067,6 +3088,11 @@ static int mmu_teardown_pages(struct kbase_device *kbdev, struct kbase_mmu_table
 	struct kbase_mmu_debug_info mmu_debug_info;
 	u64 time_in_ns;
 #endif /* CONFIG_MALI_MTK_UNHANDLED_PAGE_FAULT_DEBUG */
+#if IS_ENABLED(CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG)
+#if 0 // disable
+	int page_num = 0;
+#endif
+#endif /* CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG */
 	LIST_HEAD(free_pgds_list);
 
 	/* Calls to this function are inherently asynchronous, with respect to
@@ -3109,6 +3135,21 @@ static int mmu_teardown_pages(struct kbase_device *kbdev, struct kbase_mmu_table
 		flush_op = KBASE_MMU_OP_FLUSH_PT;
 
 	mutex_lock(&mmut->mmu_lock);
+
+#if IS_ENABLED(CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG)
+#if 0 // disable
+	if(phys) {
+		dev_err(kbdev->dev, "[MMU][unmap] va 0x%llx, phys 0x%llx, nr 0x%lx, ctx %d_%d, as %d\n",
+			start_vpfn, as_phys_addr_t(phys[0]), nr_phys_pages,
+			mmut->kctx ? mmut->kctx->tgid : 0,
+			mmut->kctx ? mmut->kctx->id : 0,
+			mmut->kctx ? mmut->kctx->as_nr : MCU_AS_NR);
+		for(page_num = 0; page_num < nr_phys_pages; page_num++) {
+			dev_err(kbdev->dev, "[MMU][unmap] %4u: pa %llx\n", page_num, as_phys_addr_t(phys[page_num]));
+		}
+	}
+#endif
+#endif /* CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG */
 
 	err = kbase_mmu_teardown_pgd_pages(kbdev, mmut, vpfn, nr_virt_pages, &dirty_pgds,
 					   &free_pgds_list, flush_op);
