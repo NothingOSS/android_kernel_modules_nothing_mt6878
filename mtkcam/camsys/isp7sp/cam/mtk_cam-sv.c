@@ -367,8 +367,18 @@ void sv_reset_by_camsys_top(struct mtk_camsv_device *sv_dev)
 {
 	int cq_dma_sw_ctl;
 	int ret;
+	unsigned int smi_common_id;
+	bool reset_enable = false;
+
+	CALL_PLAT_V4L2(
+		get_sv_smi_reset_setting, &smi_common_id, &reset_enable);
 
 	dev_info(sv_dev->dev, "%s camsv_id:%d\n", __func__, sv_dev->id);
+
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock +\n", __func__);
+	if (reset_enable)
+		mtk_smi_set_common_clamp_and_lock(smi_common_id, true);
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock -\n", __func__);
 
 	writel(0, sv_dev->base_scq + REG_CAMSVCQTOP_SW_RST_CTL);
 	writel(1, sv_dev->base_scq + REG_CAMSVCQTOP_SW_RST_CTL);
@@ -395,6 +405,11 @@ void sv_reset_by_camsys_top(struct mtk_camsv_device *sv_dev)
 	writel(0, sv_dev->cam->base + REG_CAM_MAIN_SW_RST_1);
 	wmb(); /* make sure committed */
 
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock +\n", __func__);
+	if (reset_enable)
+		mtk_smi_set_common_clamp_and_lock(smi_common_id, false);
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock -\n", __func__);
+
 RESET_FAILURE:
 	return;
 }
@@ -403,9 +418,17 @@ void sv_reset(struct mtk_camsv_device *sv_dev)
 {
 	int dma_sw_ctl, cq_dma_sw_ctl;
 	int ret;
+	unsigned int smi_common_id;
+	bool reset_enable = false;
 
-	dev_dbg(sv_dev->dev, "%s camsv_id:%d\n", __func__, sv_dev->id);
+	CALL_PLAT_V4L2(
+		get_sv_smi_reset_setting, &smi_common_id, &reset_enable);
+	dev_info(sv_dev->dev, "%s camsv_id:%d\n", __func__, sv_dev->id);
 
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock +\n", __func__);
+	if (reset_enable)
+		mtk_smi_set_common_clamp_and_lock(smi_common_id, true);
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock -\n", __func__);
 	writel(0, sv_dev->base_dma + REG_CAMSVDMATOP_SW_RST_CTL);
 	writel(1, sv_dev->base_dma + REG_CAMSVDMATOP_SW_RST_CTL);
 	wmb(); /* make sure committed */
@@ -469,7 +492,10 @@ void sv_reset(struct mtk_camsv_device *sv_dev)
 		CAMSVCQ_CQ_EN, CAMSVCQ_CQ_RESET, 0);
 
 	wmb(); /* make sure committed */
-
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock +\n", __func__);
+	if (reset_enable)
+		mtk_smi_set_common_clamp_and_lock(smi_common_id, false);
+	dev_info(sv_dev->dev, "%s mtk_smi_set_common_clamp_and_lock -\n", __func__);
 RESET_FAILURE:
 	return;
 }
@@ -1829,8 +1855,8 @@ static irqreturn_t mtk_thread_irq_camsv(int irq, void *data)
 
 static int mtk_camsv_pm_suspend(struct device *dev)
 {
-	//struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
-	//u32 val;
+	// struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
+	// u32 val;
 	int ret;
 
 	dev_dbg(dev, "- %s\n", __func__);
@@ -1866,8 +1892,8 @@ static int mtk_camsv_pm_suspend(struct device *dev)
 
 static int mtk_camsv_pm_resume(struct device *dev)
 {
-	//struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
-	//u32 val;
+	// struct mtk_camsv_device *sv_dev = dev_get_drvdata(dev);
+	// u32 val;
 	int ret;
 
 	dev_dbg(dev, "- %s\n", __func__);
@@ -2081,6 +2107,10 @@ static int mtk_camsv_of_probe(struct platform_device *pdev,
 	if (sv_dev->num_clks) {
 		sv_dev->clks = devm_kcalloc(dev, sv_dev->num_clks, sizeof(*sv_dev->clks),
 					 GFP_KERNEL);
+		if (!sv_dev->clks) {
+		    dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		    sv_dev->clks = vmalloc(sv_dev->num_clks*sizeof(*sv_dev->clks));
+		}
 		if (!sv_dev->clks)
 			return -ENOMEM;
 	}
@@ -2236,6 +2266,12 @@ static int mtk_camsv_probe(struct platform_device *pdev)
 	int sv_two_smi_en = 0, sv_support_two_smi_out = 0;
 
 	sv_dev = devm_kzalloc(dev, sizeof(*sv_dev), GFP_KERNEL);
+
+	if (!sv_dev){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		sv_dev = vmalloc(sizeof(*sv_dev));	
+	}
+
 	if (!sv_dev)
 		return -ENOMEM;
 
@@ -2263,6 +2299,12 @@ static int mtk_camsv_probe(struct platform_device *pdev)
 		roundup_pow_of_two(8 * sizeof(struct mtk_camsys_irq_info));
 	sv_dev->msg_buffer = devm_kzalloc(dev, sv_dev->fifo_size,
 					     GFP_KERNEL);
+
+	if (!sv_dev->msg_buffer){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		sv_dev->msg_buffer = vmalloc(sv_dev->fifo_size);	
+	}
+
 	if (!sv_dev->msg_buffer) {
 		ret = -ENOMEM;
 		goto UNREGISTER_PM_NOTIFIER;

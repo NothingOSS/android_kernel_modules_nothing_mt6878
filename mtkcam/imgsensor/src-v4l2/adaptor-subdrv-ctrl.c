@@ -21,7 +21,7 @@
 #include "adaptor-subdrv-ctrl.h"
 #include "adaptor-i2c.h"
 #include "adaptor-ctrls.h"
-
+#define write_cmos_sensor_8(...) subdrv_i2c_wr_u8(__VA_ARGS__)
 static const char * const clk_names[] = {
 	ADAPTOR_CLK_NAMES
 };
@@ -2055,7 +2055,12 @@ void streaming_control(struct subdrv_ctx *ctx, bool enable)
 	}
 
 	if (enable) {
-		set_dummy(ctx);
+		if(ctx->s_ctx.sensor_id == GC08A8_SENSOR_ID){
+			subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_frame_length.addr[0], ctx->frame_length >> 8);
+			subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_frame_length.addr[1], ctx->frame_length & 0xFF);
+		}
+		else
+			set_dummy(ctx);
 		subdrv_i2c_wr_u8(ctx, ctx->s_ctx.reg_addr_stream, 0x01);
 		ctx->stream_ctrl_start_time = ktime_get_boottime_ns();
 	} else {
@@ -2725,7 +2730,7 @@ int common_get_imgsensor_id(struct subdrv_ctx *ctx, u32 *sensor_id)
 				subdrv_i2c_rd_u8(ctx, addr_l);
 			if (addr_ll)
 				*sensor_id = ((*sensor_id) << 8) | subdrv_i2c_rd_u8(ctx, addr_ll);
-			DRV_LOG(ctx, "i2c_write_id:0x%x sensor_id(cur/exp):0x%x/0x%x\n",
+			pr_info("i2c_write_id:0x%x sensor_id(cur/exp):0x%x/0x%x\n",
 				ctx->i2c_write_id, *sensor_id, ctx->s_ctx.sensor_id);
 			if (*sensor_id == ctx->s_ctx.sensor_id)
 				return ERROR_NONE;
@@ -2821,16 +2826,22 @@ void subdrv_ctx_init(struct subdrv_ctx *ctx)
 void sensor_init(struct subdrv_ctx *ctx)
 {
 	u64 time_boot_begin = 0;
-
+	int i;
 	/* write init setting */
 	if (ctx->s_ctx.init_setting_table != NULL) {
 		DRV_LOG_MUST(ctx, "E: size:%u\n", ctx->s_ctx.init_setting_len);
 
 		if (ctx->power_on_profile_en)
 			time_boot_begin = ktime_get_boottime_ns();
-
-		i2c_table_write(ctx, ctx->s_ctx.init_setting_table, ctx->s_ctx.init_setting_len);
-
+		if(ctx->s_ctx.sensor_id == GC08A8_SENSOR_ID)
+		{
+			for (i = 0; i < ctx->s_ctx.init_setting_len; ){
+					write_cmos_sensor_8(ctx, ctx->s_ctx.init_setting_table[i], ctx->s_ctx.init_setting_table[i+1]);
+					i = i+2;
+					}
+		}else{
+			i2c_table_write(ctx, ctx->s_ctx.init_setting_table,ctx->s_ctx.init_setting_len);
+		}
 		if (ctx->power_on_profile_en) {
 			ctx->sensor_pw_on_profile.i2c_init_period =
 				ktime_get_boottime_ns() - time_boot_begin;
@@ -2861,7 +2872,6 @@ int common_open(struct subdrv_ctx *ctx)
 	/* get sensor id */
 	if (common_get_imgsensor_id(ctx, &sensor_id) != ERROR_NONE)
 		return ERROR_SENSOR_CONNECT_FAIL;
-
 	/* initail setting */
 	if (ctx->s_ctx.aov_sensor_support && !ctx->s_ctx.init_in_open)
 		DRV_LOG_MUST(ctx, "sensor init not in open stage!\n");
@@ -3192,6 +3202,7 @@ int common_control(struct subdrv_ctx *ctx,
 	u16 size = 0;
 	u16 addr = 0;
 	u64 time_boot_begin = 0;
+	int i;
 	struct eeprom_info_struct *info = ctx->s_ctx.eeprom_info;
 	struct adaptor_ctx *_adaptor_ctx = NULL;
 	struct v4l2_subdev *sd = NULL;
@@ -3233,8 +3244,16 @@ int common_control(struct subdrv_ctx *ctx,
 		switch (ctx->sensor_mode_ops) {
 		case AOV_MODE_CTRL_OPS_SENSING_CTRL:
 		default:
-			i2c_table_write(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table,
+			if(ctx->s_ctx.sensor_id == GC08A8_SENSOR_ID)
+			{
+				for (i = 0; i < ctx->s_ctx.mode[scenario_id].mode_setting_len; ){
+				write_cmos_sensor_8(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table[i], ctx->s_ctx.mode[scenario_id].mode_setting_table[i+1]);
+				i = i+2;
+				}
+			}else{
+				i2c_table_write(ctx, ctx->s_ctx.mode[scenario_id].mode_setting_table,
 				ctx->s_ctx.mode[scenario_id].mode_setting_len);
+			}
 			break;
 		case AOV_MODE_CTRL_OPS_MONTION_DETECTION_CTRL:
 			/* set eint gpio */
