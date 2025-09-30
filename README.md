@@ -13,3 +13,6 @@
 
 5. OS 3.2 (Galaga-V3.2-250715-1813)
   - No update
+
+5. OS 3.2 (Galaga-V3.2-250903-2153)
+  - No update
