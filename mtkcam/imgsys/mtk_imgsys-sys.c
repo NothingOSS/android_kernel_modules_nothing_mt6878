@@ -377,8 +377,6 @@ static void mtk_imgsys_notify(struct mtk_imgsys_request *req, uint64_t frm_owner
 	u32 index = iparam->index;
 	u32 frame_no = iparam->frame_no;
 	u64 req_enq, req_done, imgenq;
-    union request_track *req_track = NULL;
-    req_track = (union request_track *)req->req_stat;
 
 	IMGSYS_SYSTRACE_BEGIN("ReqFd:%d Own:%s\n", req->tstate.req_fd, ((char *)&frm_owner));
 #ifdef REQ_TIMESTAMP
@@ -386,7 +384,6 @@ static void mtk_imgsys_notify(struct mtk_imgsys_request *req, uint64_t frm_owner
 #endif
 	if (!pipe->streaming)
 		goto notify;
-    req_track->subflow_kernel++;
 	if (is_singledev_mode(req))
 		mtk_imgsys_iova_map_tbl_unmap_sd(req);
 	else if (is_desc_mode(req))
@@ -407,7 +404,6 @@ notify:
 								false);
 	req->working_buf = NULL;
 	/*  vb2 buffer done in below function  */
-    req_track->subflow_kernel++;
 	if (vbf_state == VB2_BUF_STATE_DONE)
 		mtk_imgsys_pipe_job_finish(req, vbf_state);
 	mtk_imgsys_pipe_remove_job(req);
@@ -563,6 +559,7 @@ static void imgsys_cmdq_timeout_cb_func(struct cmdq_cb_data data,
 	struct swfrm_info_t *frm_info_cb;
 	const struct module_ops *imgsys_modules;
 	struct gce_timeout_work *swork = NULL;
+	unsigned long flag;
 
 	if (!data.data) {
 		pr_info("%s: data->data is NULL\n",
@@ -673,7 +670,9 @@ release_req:
 #endif
         }
 	}
+	spin_lock_irqsave(&(imgsys_dev->timeout_lock), flag);
 	imgsys_timeout_idx = (imgsys_timeout_idx + 1) % VIDEO_MAX_FRAME;
+	spin_unlock_irqrestore(&(imgsys_dev->timeout_lock), flag);
 
 	dev_info(imgsys_dev->dev,
 		"req track-%s:%s:req fd/no(%d/%d) frmNo(%d) tfnum(%d)sidx/fidx/hw(%d/%d_%d/0x%x)timeout(%d/%d)hang_event(%d) dump cb -",
@@ -802,13 +801,13 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 		return;
 	}
 
-    req_track = (union request_track *)req->req_stat;
+	req_track = (union request_track *)req->req_stat;
 	if (swfrminfo_cb->is_lastfrm && isLastTaskInReq
 		&& (swfrminfo_cb->fail_isHWhang == -1)
-		&& (pipe->streaming)) {
-		//req_track = (union request_track *)req->req_stat;
-		//req_track->mainflow_from = REQUEST_DONE_FROM_KERNEL_TO_IMGSTREAM;
-		req_track->subflow_kernel++;
+		&& (pipe->streaming)
+		&& (pipe->is_snd_alive)) {
+		/* this is the entry point after dequeue done cb */
+		//req_track->subflow_kernel++;
 	}
 
 	IMGSYS_SYSTRACE_BEGIN("ReqFd:%d Own:%s\n", req->tstate.req_fd,
@@ -940,7 +939,6 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 		}
 	}
 	mutex_unlock(&(reqfd_cbinfo_list.mymutex));
-    req_track->subflow_kernel++;
 	if (!reqfd_record_find) {
 		dev_info(imgsys_dev->dev,
 			"%s:%s:req fd/no(%d/%d)frame no(%d)no record, kva(0x%lx)group ID/L(%d/%d)e_cb(idx_%d:%d)tfrm(%d) cb/lst(%d/%d)->%d/%d\n",
@@ -1101,7 +1099,6 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 			if (swfrminfo_cb->user_info[subfidx].is_earlycb) {
 				ev.req_fd = swfrminfo_cb->request_fd;
 				ev.frame_number = swfrminfo_cb->user_info[subfidx].subfrm_idx;
-                req_track->subflow_kernel++;
 				mtk_imgsys_early_notify(req, &ev);
 			}
 
@@ -1115,7 +1112,6 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 			if (swfrminfo_cb->is_earlycb) {
 				ev.req_fd = swfrminfo_cb->request_fd;
 				ev.frame_number = swfrminfo_cb->earlycb_sidx;
-                req_track->subflow_kernel++;
 				mtk_imgsys_early_notify(req, &ev);
 			}
 			if (swfrminfo_cb->is_lastfrm) {
@@ -1134,7 +1130,6 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
         }
 		/* call dip notify when all package done */
 		if (/*pipe->streaming && */can_notify_imgsys/*lastfrmInMWReq*/) {
-            req_track->subflow_kernel++;
 			mtk_imgsys_notify(req, swfrminfo_cb->frm_owner);
 		}
 
@@ -2954,6 +2949,7 @@ static int mtk_imgsys_worker_hcp_init(struct mtk_imgsys_dev *imgsys_dev)
 	}
 
 	imgsys_timeout_idx = 0;
+	spin_lock_init(&imgsys_dev->timeout_lock);
 	/* calling cmdq stream on */
 	imgsys_cmdq_streamon(imgsys_dev);
 
@@ -3180,10 +3176,11 @@ int mtk_imgsys_hw_streamon(struct mtk_imgsys_pipe *pipe)
 	mutex_unlock(&imgsys_dev->hw_op_lock);
 
 	pipe->streaming = 1;
-    if (imgsys_dbg_enable())
-	dev_dbg(pipe->imgsys_dev->dev,
-		"%s:%s: started stream, id(%d), stream cnt(%d)\n",
-		__func__, pipe->desc->name, pipe->desc->id, count);
+	pipe->is_snd_alive = 1;
+	if (imgsys_dbg_enable())
+		dev_dbg(pipe->imgsys_dev->dev,
+			"%s:%s: started stream, id(%d), stream cnt(%d)\n",
+			__func__, pipe->desc->name, pipe->desc->id, count);
 
 	return 0;
 }
@@ -3195,12 +3192,16 @@ int mtk_imgsys_hw_streamoff(struct mtk_imgsys_pipe *pipe)
 	int ret;
 
 	if (pipe->streaming != 0) {
+		/*
+		 * Imgstream's flow: release snd buffer then stream off
+		 * just leave this flag reset timing as fast as possible
+		 * need to change this flag's value as (un)reg_kva ioctl
+		 */
+		pipe->is_snd_alive = 0;
     	if (imgsys_dbg_enable())
 		dev_dbg(imgsys_dev->dev,
 			"%s:%s: streamoff, removing all running jobs\n",
 			__func__, pipe->desc->name);
-
-		pipe->streaming = 0;
 
 		ret = mtk_imgsys_hw_flush_pipe_jobs(pipe);
 		if (ret != 0) {
@@ -3233,6 +3234,8 @@ int mtk_imgsys_hw_streamoff(struct mtk_imgsys_pipe *pipe)
 				__func__, imgsys_dev->imgsys_stream_cnt);
 
 			flush_fd_kva_list(imgsys_dev);
+			pipe->streaming = 0;
+			wake_up(&imgsys_dev->shutdown_waitq);
 		}
     	if (imgsys_dbg_enable())
 		dev_dbg(pipe->imgsys_dev->dev,

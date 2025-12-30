@@ -2095,7 +2095,28 @@ static void dump_iterator_registers(struct kbase_device *kbdev)
 
 static void mtk_debug_csf_dump_cpu_queues(struct kbase_device *kbdev, struct kbase_context *kctx)
 {
-	lockdep_assert_held(&kctx->csf.lock);
+    struct task_struct *task;
+    struct pid *pid_struct;
+
+    lockdep_assert_held(&kctx->csf.lock);
+
+    /* Prevent dump when process in the zombie or dead state */
+    pid_struct = find_get_pid(kctx->tgid);
+    if (pid_struct) {
+        rcu_read_lock();
+        task = pid_task(pid_struct, PIDTYPE_PID);
+        if (task && ((task->exit_state == EXIT_ZOMBIE) || (task->exit_state == EXIT_DEAD) || (task->__state & TASK_FROZEN))) {
+            mtk_log_critical_exception(kbdev, true,
+                "[%d_%d] Bypass CPU queue dump, event thread already in state:0x%llx, exit_state:0x%llx",
+                kctx->tgid, kctx->id, (unsigned long long) task->__state, (unsigned long long) task->exit_state);
+            rcu_read_unlock();
+            put_pid(pid_struct);
+            mutex_unlock(&kctx->csf.lock);
+            return;
+        }
+        rcu_read_unlock();
+        put_pid(pid_struct);
+    }
 
 #if IS_ENABLED(CONFIG_MALI_MTK_CROSS_QUEUE_SYNC_RECOVERY) || IS_ENABLED(CONFIG_MALI_MTK_CPUQ_DUMP_ENHANCEMENT)
 	mutex_lock(&kctx->csf.cpu_queue.lock);
@@ -2127,7 +2148,7 @@ static void mtk_debug_csf_dump_cpu_queues(struct kbase_device *kbdev, struct kba
 		"[cpu_queue] ##### Ctx %d_%d #####",
 		kctx->tgid, kctx->id);
 
-	if (!wait_for_completion_timeout(&kctx->csf.cpu_queue.dump_cmp, msecs_to_jiffies(3000))) {
+	if (!wait_for_completion_timeout(&kctx->csf.cpu_queue.dump_cmp, msecs_to_jiffies(500))) {
 		mtk_log_critical_exception(kbdev, true,
 			"[%d_%d] Timeout waiting for dump completion",
 			kctx->tgid, kctx->id);

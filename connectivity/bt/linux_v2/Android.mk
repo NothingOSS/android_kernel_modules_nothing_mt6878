@@ -88,4 +88,7 @@ include $(MTK_KERNEL_MODULE)
 
 #endif
 endif
-include $(LOCAL_PATH)/uart_daemon/Android.mk
+ifeq ($(wildcard $(LOCAL_PATH)/../linux_v2_mt6653),)
+    $(info linux_v2_mt6653 not include uart_daemon/Android.mk)
+    include $(LOCAL_PATH)/uart_daemon/Android.mk
+endif

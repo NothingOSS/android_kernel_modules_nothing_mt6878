@@ -698,7 +698,7 @@
 						+ CFG_NUM_OF_QM_RX_PKT_NUM)
 
 #define CFG_RX_RFB_MEM_LEAK_THRESHOLD		(CFG_RX_MAX_PKT_NUM / 10)
-#define CFG_RX_RFB_MEM_LEAK_INTERVAL		(1000)
+#define CFG_RX_RFB_MEM_LEAK_INTERVAL		(5000)
 
 #define CFG_RX_REORDER_Q_THRESHOLD              8
 
@@ -2354,6 +2354,14 @@
 #define CFG_FIX_INCONSISTENT_RFB_POINTER 0
 #endif
 
+#ifndef CFG_DEBUG_RX_SEGMENT
+#define CFG_DEBUG_RX_SEGMENT 0
+#endif /* CFG_DEBUG_SEGMENT */
+
+#if CFG_DEBUG_RX_SEGMENT
+#define RX_SEGMENT_DEBUG_TIMEOUT 10 /* unit: second */
+#endif /* CFG_DEBUG_RX_SEGMENT */
+
 /*------------------------------------------------------------------------------
  * Support FreeMsdu tasklet.
  * Linux version only. Force remove for other platform
@@ -2658,6 +2666,10 @@
 #define CFG_WIFI_IGTK_GTK_SEPARATE	0
 #else
 #define CFG_WIFI_IGTK_GTK_SEPARATE	1
+#endif
+
+#ifndef CFG_REKEY_OFFLOAD
+#define CFG_REKEY_OFFLOAD	1
 #endif
 
 #if (CFG_MTK_ANDROID_WMT == 1)

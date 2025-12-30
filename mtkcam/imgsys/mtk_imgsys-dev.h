@@ -204,6 +204,7 @@ struct mtk_imgsys_pipe {
 	unsigned long long nodes_streaming;
 	unsigned long long nodes_enabled;
 	int streaming;
+	int is_snd_alive; /* flag to store single device's life cycle */
 	struct media_pad *subdev_pads;
 	struct media_pipeline pipeline;
 	struct v4l2_subdev subdev;
@@ -339,6 +340,7 @@ struct mtk_imgsys_dev {
 	struct workqueue_struct *mdp_wq[RUNNER_WQ_NR];
 	struct imgsys_queue runnerque;
 	wait_queue_head_t flushing_waitq;
+	wait_queue_head_t shutdown_waitq;
 	/* larb control */
 	struct device **larbs;
 	unsigned int larbs_num;
@@ -383,6 +385,7 @@ struct mtk_imgsys_dev {
 	struct mutex power_ctrl_lock;
 	struct mutex vss_blk_lock;
 	struct mutex sec_task_lock;
+	spinlock_t timeout_lock;
 	debug_dump dump;
 	atomic_t imgsys_user_cnt;
 	struct kref init_kref;

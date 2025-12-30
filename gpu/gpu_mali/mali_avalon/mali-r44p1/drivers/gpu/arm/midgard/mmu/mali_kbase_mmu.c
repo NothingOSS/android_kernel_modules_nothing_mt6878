@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 /*
  *
- * (C) COPYRIGHT 2010-2024 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2025 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -2379,7 +2379,9 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 	phys_addr_t new_pgds[MIDGARD_MMU_BOTTOMLEVEL + 1];
 	int l, cur_level, insert_level;
 	struct tagged_addr *start_phys = phys;
-
+#if IS_ENABLED(CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG)
+	int page_num = 0;
+#endif /* CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG */
 	if (mmut->kctx)
 		lockdep_assert_held(&mmut->kctx->reg_lock);
 
@@ -2395,6 +2397,25 @@ static int mmu_insert_pages_no_flush(struct kbase_device *kbdev, struct kbase_mm
 
 	mutex_lock(&mmut->mmu_lock);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG)
+	if(phys) {
+#if 0
+		dev_err(kbdev->dev, "[MMU][map] va 0x%llx, phys 0x%llx, flag 0x%lx, nr 0x%lx, ctx %d_%d, as %d\n",
+			start_vpfn, as_phys_addr_t(phys[0]), flags, nr,
+			mmut->kctx ? mmut->kctx->tgid : 0,
+			mmut->kctx ? mmut->kctx->id : 0,
+			mmut->kctx ? mmut->kctx->as_nr : MCU_AS_NR);
+#endif
+ 		for(page_num = 0; page_num < nr; page_num++) {
+			phys_addr_t gpu_pa = as_phys_addr_t(phys[page_num]);
+			if(((phys_addr_t)(0x8ea00000) <= gpu_pa && gpu_pa < (phys_addr_t)(0x8f000000)) ||
+				((phys_addr_t)(0xca000000) <= gpu_pa && gpu_pa < (phys_addr_t)(0xce360000))) {
+				dev_err(kbdev->dev, "[MMU][map] %4u: pa violation range<23>(0x8ea00000~0x8f000000)<43>(0xca000000~0xce360000) %llx(%llu) , f 0x%lx\n", page_num, as_phys_addr_t(phys[page_num]), gpu_pa, flags);
+				dump_stack();
+			}
+ 		}
+	}
+#endif /* CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG */
 	while (remain) {
 		unsigned int vindex = insert_vpfn & 0x1FF;
 		unsigned int count = KBASE_MMU_PAGE_ENTRIES - vindex;
@@ -3067,6 +3088,11 @@ static int mmu_teardown_pages(struct kbase_device *kbdev, struct kbase_mmu_table
 	struct kbase_mmu_debug_info mmu_debug_info;
 	u64 time_in_ns;
 #endif /* CONFIG_MALI_MTK_UNHANDLED_PAGE_FAULT_DEBUG */
+#if IS_ENABLED(CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG)
+#if 0 // disable
+	int page_num = 0;
+#endif
+#endif /* CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG */
 	LIST_HEAD(free_pgds_list);
 
 	/* Calls to this function are inherently asynchronous, with respect to
@@ -3109,6 +3135,21 @@ static int mmu_teardown_pages(struct kbase_device *kbdev, struct kbase_mmu_table
 		flush_op = KBASE_MMU_OP_FLUSH_PT;
 
 	mutex_lock(&mmut->mmu_lock);
+
+#if IS_ENABLED(CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG)
+#if 0 // disable
+	if(phys) {
+		dev_err(kbdev->dev, "[MMU][unmap] va 0x%llx, phys 0x%llx, nr 0x%lx, ctx %d_%d, as %d\n",
+			start_vpfn, as_phys_addr_t(phys[0]), nr_phys_pages,
+			mmut->kctx ? mmut->kctx->tgid : 0,
+			mmut->kctx ? mmut->kctx->id : 0,
+			mmut->kctx ? mmut->kctx->as_nr : MCU_AS_NR);
+		for(page_num = 0; page_num < nr_phys_pages; page_num++) {
+			dev_err(kbdev->dev, "[MMU][unmap] %4u: pa %llx\n", page_num, as_phys_addr_t(phys[page_num]));
+		}
+	}
+#endif
+#endif /* CONFIG_MALI_MTK_KBASE_MMU_DBG_LOG */
 
 	err = kbase_mmu_teardown_pgd_pages(kbdev, mmut, vpfn, nr_virt_pages, &dirty_pgds,
 					   &free_pgds_list, flush_op);
@@ -3405,11 +3446,21 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 	/* If page migration support is not compiled in, return with fault */
 	if (!IS_ENABLED(CONFIG_PAGE_MIGRATION_SUPPORT))
 		return -EINVAL;
-	/* Due to the hard binding of mmu_command_instr with kctx_id via kbase_mmu_hw_op_param,
-	 * here we skip the no kctx case, which is only used with MCU's mmut.
-	 */
-	if (!mmut->kctx)
-		return -EINVAL;
+
+	spin_lock(&page_md->migrate_lock);
+
+	check_state = PAGE_STATUS_GET(page_md->status);
+
+	if (WARN_ONCE(check_state != ALLOCATED_MAPPED,
+		      "Page metadata status %d doesn't match expected value %d", check_state,
+		      ALLOCATED_MAPPED)) {
+		ret = -EINVAL;
+		goto early_exit;
+	}
+
+	mmut = (level == MIDGARD_MMU_BOTTOMLEVEL) ?
+			page_md->data.mapped.mmut :
+    		page_md->data.pt_mapped.mmut;
 
 	if (level > MIDGARD_MMU_BOTTOMLEVEL)
 		return -EINVAL;
@@ -3417,6 +3468,14 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 		vpfn = page_md->data.mapped.vpfn;
 	else
 		vpfn = PGD_VPFN_LEVEL_GET_VPFN(page_md->data.pt_mapped.pgd_vpfn_level);
+
+	spin_unlock(&page_md->migrate_lock);
+
+	/* Due to the hard binding of mmu_command_instr with kctx_id via kbase_mmu_hw_op_param,
+	 * here we skip the no kctx case, which is only used with MCU's mmut.
+	 */
+	if (!mmut->kctx)
+		return -EINVAL;
 
 	kbdev = mmut->kctx->kbdev;
 	index = (vpfn >> ((3 - level) * 9)) & 0x1FF;
@@ -3477,21 +3536,20 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 					     pgd_level_to_skip_flush(1ULL << level) :
 					     pgd_level_to_skip_flush(3ULL << level);
 
-	mutex_lock(&mmut->mmu_lock);
 
 	/* The state was evaluated before entering this function, but it could
 	 * have changed before the mmu_lock was taken. However, the state
 	 * transitions which are possible at this point are only two, and in both
 	 * cases it is a stable state progressing to a "free in progress" state.
 	 *
-	 * After taking the mmu_lock the state can no longer change: read it again
-	 * and make sure that it hasn't changed before continuing.
+	 * After taking the mmu_lock the state can no longer change.
 	 */
+	mutex_lock(&mmut->mmu_lock);
 	spin_lock(&page_md->migrate_lock);
+
 	check_state = PAGE_STATUS_GET(page_md->status);
 	if (level == MIDGARD_MMU_BOTTOMLEVEL)
 		vmap_count = page_md->vmap_count;
-	spin_unlock(&page_md->migrate_lock);
 
 	if (level == MIDGARD_MMU_BOTTOMLEVEL) {
 		if (check_state != ALLOCATED_MAPPED) {
@@ -3530,6 +3588,7 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 		goto pgd_page_map_error;
 	}
 
+	spin_unlock(&page_md->migrate_lock);
 	mutex_lock(&kbdev->mmu_hw_mutex);
 
 	/* Lock MMU region and flush GPU cache by using GPU control,
@@ -3538,11 +3597,9 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 	spin_lock_irqsave(&kbdev->hwaccess_lock, hwaccess_flags);
 	if (unlikely(!kbase_pm_l2_allow_mmu_page_migration(kbdev))) {
 		/* Defer the migration as L2 is in a transitional phase */
-		spin_unlock_irqrestore(&kbdev->hwaccess_lock, hwaccess_flags);
-		mutex_unlock(&kbdev->mmu_hw_mutex);
-		dev_dbg(kbdev->dev, "%s: L2 in transtion, abort PGD page migration", __func__);
+		dev_dbg(kbdev->dev, "%s: L2 in transition, abort PGD page migration", __func__);
 		ret = -EAGAIN;
-		goto l2_state_defer_out;
+		goto defer_out;
 	}
 	/* Prevent transitional phases in L2 by starting the transaction */
 	mmu_page_migration_transaction_begin(kbdev);
@@ -3569,7 +3626,6 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, hwaccess_flags);
 
 	if (ret < 0) {
-		mutex_unlock(&kbdev->mmu_hw_mutex);
 		dev_err(kbdev->dev, "%s: failed to lock MMU region or flush GPU cache", __func__);
 		goto undo_mappings;
 	}
@@ -3664,17 +3720,16 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 
 		CSTD_UNUSED(local_ret);
 	}
-	spin_unlock_irqrestore(&kbdev->hwaccess_lock, hwaccess_flags);
-	/* Releasing locks before checking the migration transaction error state */
-	mutex_unlock(&kbdev->mmu_hw_mutex);
-
-	spin_lock_irqsave(&kbdev->hwaccess_lock, hwaccess_flags);
 	/* Release the transition prevention in L2 by ending the transaction */
 	mmu_page_migration_transaction_end(kbdev);
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, hwaccess_flags);
+	/* Releasing locks before checking the migration transaction error state.
+	 * Reacquire the migrate_lock immediately since we're releasing the mutex.
+	 */
+	mutex_unlock(&kbdev->mmu_hw_mutex);
+	spin_lock(&page_md->migrate_lock);
 
 	/* Undertaking metadata transfer, while we are holding the mmu_lock */
-	spin_lock(&page_md->migrate_lock);
 	if (level == MIDGARD_MMU_BOTTOMLEVEL) {
 		enum kbase_page_status page_status = PAGE_STATUS_GET(page_md->status);
 
@@ -3698,18 +3753,16 @@ int kbase_mmu_migrate_page(struct tagged_addr old_phys, struct tagged_addr new_p
 	/* Update the new page dma_addr with the transferred metadata from the old_page */
 	page_md->dma_addr = new_dma_addr;
 	page_md->status = PAGE_ISOLATE_SET(page_md->status, 0);
-	spin_unlock(&page_md->migrate_lock);
 	set_page_private(as_page(new_phys), (unsigned long)page_md);
 	/* Old page metatdata pointer cleared as it now owned by the new page */
 	set_page_private(as_page(old_phys), 0);
 
-l2_state_defer_out:
 	kbase_kunmap(phys_to_page(pgd), pgd_page);
 pgd_page_map_error:
 get_pgd_at_level_error:
 page_state_change_out:
+	spin_unlock(&page_md->migrate_lock);
 	mutex_unlock(&mmut->mmu_lock);
-
 	kbase_kunmap(as_page(new_phys), new_page);
 new_page_map_error:
 	kbase_kunmap(as_page(old_phys), old_page);
@@ -3717,12 +3770,16 @@ old_page_map_error:
 	return ret;
 
 undo_mappings:
-	/* Unlock the MMU table and undo mappings. */
+defer_out:
+	mutex_unlock(&kbdev->mmu_hw_mutex);
 	mutex_unlock(&mmut->mmu_lock);
 	kbase_kunmap(phys_to_page(pgd), pgd_page);
 	kbase_kunmap(as_page(new_phys), new_page);
 	kbase_kunmap(as_page(old_phys), old_page);
+	return ret;
 
+early_exit:
+	spin_unlock(&page_md->migrate_lock);
 	return ret;
 }
 
@@ -3784,6 +3841,8 @@ static void kbase_mmu_mark_non_movable(struct page *page)
 	if (!kbase_is_page_migration_enabled())
 		return;
 
+	lock_page(page);
+
 	page_md = kbase_page_private(page);
 
 	spin_lock(&page_md->migrate_lock);
@@ -3792,7 +3851,9 @@ static void kbase_mmu_mark_non_movable(struct page *page)
 	if (IS_PAGE_MOVABLE(page_md->status))
 		page_md->status = PAGE_MOVABLE_CLEAR(page_md->status);
 
+	__ClearPageMovable(page);
 	spin_unlock(&page_md->migrate_lock);
+	unlock_page(page);
 }
 
 int kbase_mmu_init(struct kbase_device *const kbdev,

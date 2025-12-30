@@ -1351,7 +1351,6 @@ int consys_plt_pmic_common_power_low_power_mode_mt6878_6631_6686(unsigned int en
 
 			/* 2. set PMIC VRFIO18 LDO SW_OP_EN =1, SW_EN = 1, SW_LP =1 */
 			regulator_set_mode(reg_VRFIO18, REGULATOR_MODE_IDLE);
-			ret = regulator_enable(reg_VRFIO18);
 
 			/* 3. vcn33_1 enabled, disable vcn33_2 */
 			consys_pmic_vcn33_1_power_ctl_mt6878_6631_6686_rc(enable);

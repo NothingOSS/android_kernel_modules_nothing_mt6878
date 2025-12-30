@@ -3413,7 +3413,8 @@ struct BSS_DESC *scanAddToBssDesc(struct ADAPTER *prAdapter,
 					prBssDesc->fgIEWPA = TRUE;
 				}
 			}
-
+			if (prBssDesc->fgIsVHTPresent == FALSE)
+				scanCheckEpigramVhtIE(pucIE, prBssDesc);
 #if CFG_SUPPORT_PASSPOINT
 			/* since OSEN is mutual exclusion with RSN, so
 			 * we reuse RSN here
@@ -5106,6 +5107,77 @@ void scanResetBssDesc(struct ADAPTER *prAdapter,
 		TRUE);
 }	/* end of scanResetBssDesc() */
 
+/*----------------------------------------------------------------------------*/
+/*!
+ * @brief Check if VHT IE exists in Vendor Epigram IE.
+ *
+ * @param[in] pucBuf     Pointer to the Vendor IE.
+ * @param[in] prBssDesc  Pointer to the BSS_DESC structure.
+ *
+ * @return (none)
+ */
+/*----------------------------------------------------------------------------*/
+void scanCheckEpigramVhtIE(uint8_t *pucBuf,
+			struct BSS_DESC *prBssDesc)
+{
+	uint32_t u4EpigramOui;
+	uint16_t u2EpigramVendorType;
+	struct IE_VENDOR_EPIGRAM_IE *prEpiIE;
+	uint8_t *pucIE;
+	uint16_t u2IELength;
+	uint16_t u2Offset = 0;
+
+	if (pucBuf == NULL) {
+		DBGLOG(RLM, WARN, "[Epigram] pucBuf is NULL, skip!\n");
+		return;
+	}
+	if (prBssDesc == NULL) {
+		DBGLOG(RLM, WARN, "[Epigram] prBssDesc is NULL, skip!\n");
+		return;
+	}
+
+	prEpiIE = (struct IE_VENDOR_EPIGRAM_IE *) pucBuf;
+	/* Sanity Check:
+	 * pucBuf length should include "Oui", "VendorType", "VHTOP",
+	 * "VHTCAP"
+	 */
+	if (IE_LEN(prEpiIE) <=
+		(sizeof(struct IE_VHT_OP) + sizeof(struct IE_VHT_CAP) + 5)) {
+		DBGLOG(RLM, WARN,
+			"[Epigram] VHT length is invalid(%d), skip!\n",
+			prEpiIE->ucLength);
+		return;
+	}
+	/* IELength start from pucData.
+	 * Minus 2 bytes to exlude "Id" + "Length"
+	 */
+	u2IELength = prEpiIE->ucLength -
+		((uint16_t)
+		OFFSET_OF(struct IE_VENDOR_EPIGRAM_IE, pucData[0]) - 2);
+	WLAN_GET_FIELD_BE24(prEpiIE->aucOui, &u4EpigramOui);
+	WLAN_GET_FIELD_BE16(prEpiIE->aucVendorType, &u2EpigramVendorType);
+	if (u4EpigramOui != VENDOR_IE_EPIGRAM_OUI)
+		return;
+	if (u2EpigramVendorType != VENDOR_IE_EPIGRAM_VHTTYPE1 &&
+	    u2EpigramVendorType != VENDOR_IE_EPIGRAM_VHTTYPE2 &&
+	    u2EpigramVendorType != VENDOR_IE_EPIGRAM_VHTTYPE3)
+		return;
+
+	pucIE = prEpiIE->pucData;
+	IE_FOR_EACH(pucIE, u2IELength, u2Offset) {
+		switch (IE_ID(pucIE)) {
+		case ELEM_ID_VHT_CAP:
+			scanParseVHTCapIE(pucIE, prBssDesc);
+			break;
+		case ELEM_ID_VHT_OP:
+			scanParseVHTOpIE(pucIE, prBssDesc);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 void scanParseVHTCapIE(uint8_t *pucIE, struct BSS_DESC *prBssDesc)
 {
 	struct IE_VHT_CAP *prVhtCap = NULL;
@@ -5227,43 +5299,43 @@ void scanParseCheckMTKOuiIE(struct ADAPTER *prAdapter,
 	    !(aucCapa[0] & MTK_SYNERGY_CAP_SUPPORT_TLV))
 		return;
 
-#if CFG_SUPPORT_MLR
-	if (pucIE[5] == 0x01 && pucIE[9] == 0x01) {
-		/* MLR Type = 0x01 */
-		prBssDesc->ucMlrType = pucIE[9];
-		/* MLR Length = 0x01 */
-		prBssDesc->ucMlrLength = pucIE[10];
-		/* LR bitmap:
-		 * BIT[0]-MLR_V1,
-		 * BIT[1]->MLR_V2,
-		 * BIT[2]MLR+,
-		 * BIT[3]->ALR,
-		 * BIT[4]->DUAL_CTS
-		 */
-		prBssDesc->ucMlrSupportBitmap = (pucIE[11] &
-			(!MLR_CHECK_IF_BAND_IS_SUPPORT(prBssDesc->eBand) ?
-			MLR_MODE_NOT_SUPPORT : ~0));
-
-		prBssDesc->fsIsMlrSupport =
-			MLR_BIT_SUPPORT(prBssDesc
-			->ucMlrSupportBitmap);
-
-		MLR_DBGLOG(prAdapter, SCN, INFO,
-			"MLR beacon - BSSID:" MACSTR
-			" IsMlrS:%d Type|Len|B[%d, %d, 0x%02x]\n",
-			MAC2STR(prBssDesc->aucBSSID),
-			prBssDesc->fsIsMlrSupport,
-			prBssDesc->ucMlrType,
-			prBssDesc->ucMlrLength,
-			prBssDesc->ucMlrSupportBitmap);
-
-	}
-#endif
-
 	ie = MTK_OUI_IE(pucIE)->aucInfoElem;
 	ie_len = IE_LEN(pucIE) - 7;
 
 	IE_FOR_EACH(ie, ie_len, ie_offset) {
+#if CFG_SUPPORT_MLR
+		if (IE_ID(ie) == MTK_OUI_ID_MLR) {
+			struct IE_MTK_MLR *prMLR = (struct IE_MTK_MLR *)ie;
+			/* MLR Type = 0x01 */
+			prBssDesc->ucMlrType = prMLR->ucId;
+			/* MLR Length = 0x01 */
+			prBssDesc->ucMlrLength = prMLR->ucLength;
+			/* LR bitmap:
+			 * BIT[0]-MLR_V1,
+			 * BIT[1]->MLR_V2,
+			 * BIT[2]MLR+,
+			 * BIT[3]->ALR,
+			 * BIT[4]->DUAL_CTS
+			 */
+			prBssDesc->ucMlrSupportBitmap = (prMLR->ucLRBitMap &
+				(!MLR_CHECK_IF_BAND_IS_SUPPORT(
+				prBssDesc->eBand) ?
+				MLR_MODE_NOT_SUPPORT : ~0));
+
+			prBssDesc->fsIsMlrSupport =
+				MLR_BIT_SUPPORT(prBssDesc
+				->ucMlrSupportBitmap);
+
+			MLR_DBGLOG(prAdapter, SCN, INFO,
+				"MLR beacon - BSSID:" MACSTR
+				" IsMlrS:%d Type|Len|B[%d, %d, 0x%02x]\n",
+				MAC2STR(prBssDesc->aucBSSID),
+				prBssDesc->fsIsMlrSupport,
+				prBssDesc->ucMlrType,
+				prBssDesc->ucMlrLength,
+				prBssDesc->ucMlrSupportBitmap);
+		}
+#endif
 		if (IE_ID(ie) == MTK_OUI_ID_PRE_WIFI7) {
 			struct IE_MTK_PRE_WIFI7 *prPreWifi7 =
 				(struct IE_MTK_PRE_WIFI7 *)ie;

@@ -35,6 +35,8 @@ void gps_dl_hw_gps_dump_top_rf_temp_cr(void);
 void gps_dl_hw_common_enter_dpstop_dpsleep(void);
 void gps_dl_hw_common_leave_dpstop_dpsleep(void);
 void gps_dl_hw_common_clear_wakeup_source(void);
+void gps_dl_hw_common_dump_after_exit_dpstop_dpsleep(void);
+void gps_dl_hw_common_dump_before_enter_dpstop_dpsleep(void);
 
 int gps_dl_hw_gps_common_on(void);
 int gps_dl_hw_gps_common_off(void);

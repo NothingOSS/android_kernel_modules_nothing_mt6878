@@ -5503,4 +5503,9 @@ wlanoidSet6GPwrMode(struct ADAPTER *prAdapter,
 		     uint32_t *pu4SetInfoLen);
 #endif /* CFG_SUPPORT_WIFI_6G_PWR_MODE */
 
+uint32_t
+wlanoidQueryLteSafeChannel(struct ADAPTER *prAdapter,
+			void *pvQueryBuffer, uint32_t u4QueryBufferLen,
+			uint32_t *pu4QueryInfoLen);
+
 #endif /* _WLAN_OID_H */

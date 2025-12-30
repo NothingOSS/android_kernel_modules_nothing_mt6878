@@ -271,8 +271,9 @@ void mtk_imgsys_pipe_job_finish(struct mtk_imgsys_request *req,
 	int i;
 	int req_id = req->id;
 	unsigned int vb2_buffer_index;
-    union request_track *req_track = NULL;
-    req_track = (union request_track *)req->req_stat;
+	union request_track *req_track = NULL;
+
+	req_track = (union request_track *)req->req_stat;
 
 #ifdef BATCH_MODE_V3
 	// batch mode
@@ -292,8 +293,11 @@ void mtk_imgsys_pipe_job_finish(struct mtk_imgsys_request *req,
 		i = MTK_IMGSYS_VIDEO_NODE_CTRLMETA_OUT;
 
 	in_buf = req->buf_map[i];
-	req_track->mainflow_from = REQUEST_DONE_FROM_KERNEL_TO_IMGSTREAM;
-	req_track->subflow_kernel++;
+	if(pipe->streaming && pipe->is_snd_alive){
+		/* Ensure pipe haven't stream off and snd buffer is alive */
+		req_track->mainflow_from = REQUEST_DONE_FROM_KERNEL_TO_IMGSTREAM;
+		req_track->subflow_kernel++;
+	}
 
 	for (i = 0; i < pipe->desc->total_queues; i++) {
 		struct mtk_imgsys_dev_buffer *dev_buf = req->buf_map[i];

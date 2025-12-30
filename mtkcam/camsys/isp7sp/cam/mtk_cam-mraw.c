@@ -1238,6 +1238,9 @@ void mraw_handle_error(struct mtk_mraw_device *mraw_dev,
 
 	/* dump mraw debug data */
 	mtk_cam_mraw_debug_dump(mraw_dev);
+
+	if (ctx && ctx->seninf)
+		mtk_cam_seninf_dump_current_status(ctx->seninf);
 }
 
 static irqreturn_t mtk_irq_mraw(int irq, void *data)

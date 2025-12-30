@@ -113,6 +113,7 @@ uint8_t *apucRstReason[RST_REASON_MAX] = {
 	(uint8_t *) DISP_STRING("Chip reset by AER - SDES"),
 	(uint8_t *) DISP_STRING("RST_MCU_INIT_FAIL"),
 	(uint8_t *) DISP_STRING("RST_RFB_FAIL"),
+	(uint8_t *) DISP_STRING("RST_WFDMA_MAP_FAIL"),
 };
 
 const uint8_t *apucRstAction[] = {

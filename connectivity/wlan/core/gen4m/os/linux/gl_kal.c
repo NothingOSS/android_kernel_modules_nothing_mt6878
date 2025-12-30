@@ -110,11 +110,6 @@ extern uint32_t get_wifi_standalone_log_mode(void) __attribute__((weak));
 #define MTKGRP 22
 #endif
 
-#if CFG_MODIFY_TX_POWER_BY_BAT_VOLT
-#define BACKOFF_VOLT 3550
-#define RESTORE_VOLT 3750
-#endif
-
 #if CFG_SUPPORT_TPUT_FACTOR
 #define CPU_CNT 8
 /* current max CPU count */
@@ -1532,14 +1527,27 @@ u_int8_t kalProcessRadiotap(void *pvPacket,
 	uint16_t u2RxByteCount)
 {
 	struct sk_buff *prSkb;
+	uint16_t total_len;
 
 	prSkb = (struct sk_buff *)pvPacket;
 	/* exceed skb headroom the kernel will panic */
 	if (skb_headroom(prSkb) < radiotap_len) {
 		DBGLOG(INIT, ERROR,
-			"radiotap[%u] exceed skb headroom[%u]!\n",
+			"prSkb[0x%p] radiotap[%u] exceed skb headroom[%u]!\n",
+			prSkb,
 			radiotap_len,
 			skb_headroom(prSkb));
+		return FALSE;
+	}
+
+	total_len = radiotap_len + u2RxByteCount;
+	if (SKB_WITH_OVERHEAD(prSkb->truesize) < total_len) {
+		DBGLOG(INIT, ERROR,
+			"prSkb[0x%p] truesize[%u] is smaller than total_len[%u][%u:%u]\n",
+			prSkb,
+			SKB_WITH_OVERHEAD(prSkb->truesize),
+			total_len, radiotap_len,
+			u2RxByteCount);
 		return FALSE;
 	}
 
@@ -1549,7 +1557,7 @@ u_int8_t kalProcessRadiotap(void *pvPacket,
 
 	skb_reset_tail_pointer(prSkb);
 	skb_trim(prSkb, 0);
-	skb_put(prSkb, (radiotap_len + u2RxByteCount));
+	skb_put(prSkb, total_len);
 
 	return TRUE;
 }
@@ -1719,6 +1727,13 @@ void kalSkbReuseCheck(struct SW_RFB *prSwRfb)
 
 	prSkb = (struct sk_buff *)prSwRfb->pvPacket;
 
+	/* sanity check */
+	if (prSwRfb->pucRecvBuff != prSkb->data) {
+		DBGLOG(NIC, ERROR, "RX buffer not match, %04X != %04X\n",
+			(uintptr_t)prSwRfb->pucRecvBuff & 0xFFFF,
+			(uintptr_t)prSkb->data & 0xFFFF);
+	}
+
 	/*
 	 * if skb headroom is not zero, then it may not 4 byte alignment,
 	 * so we should not reuse it.
@@ -1735,13 +1750,6 @@ void kalSkbReuseCheck(struct SW_RFB *prSwRfb)
 			skb_headroom(prSkb));
 		kalKfreeSkb(prSwRfb->pvPacket, TRUE);
 		prSwRfb->pvPacket = NULL;
-	}
-
-	/* sanity check */
-	if (prSwRfb->pucRecvBuff != prSkb->data) {
-		DBGLOG(NIC, ERROR, "RX buffer not match, %04X != %04X\n",
-			(uintptr_t)prSwRfb->pucRecvBuff & 0xFFFF,
-			(uintptr_t)prSkb->data & 0xFFFF);
 	}
 }
 #endif /* CFG_SUPPORT_RX_PAGE_POOL */
@@ -1951,7 +1959,6 @@ uint32_t kalRxIndicateOnePkt(struct GLUE_INFO
 	prSkb = pvPkt;
 	prChipInfo = prGlueInfo->prAdapter->chip_info;
 	ucBssIdx = GLUE_GET_PKT_BSS_IDX(prSkb);
-	RX_INC_CNT(&prGlueInfo->prAdapter->rRxCtrl, RX_DATA_INDICATION_COUNT);
 #if DBG && 0
 	do {
 		uint8_t *pu4Head = (uint8_t *) &prSkb->cb[0];
@@ -1986,8 +1993,11 @@ uint32_t kalRxIndicateOnePkt(struct GLUE_INFO
 
 	if (prNetDev->dev_addr == NULL) {
 		DBGLOG(RX, WARN, "dev_addr == NULL\n");
+		kalPacketFree(prGlueInfo, pvPkt);
 		return WLAN_STATUS_FAILURE;
 	}
+
+	RX_INC_CNT(&prGlueInfo->prAdapter->rRxCtrl, RX_DATA_INDICATION_COUNT);
 
 	prNetDev->stats.rx_bytes += prSkb->len;
 	prNetDev->stats.rx_packets++;
@@ -2150,32 +2160,29 @@ void kalRxRFBFailRecoveryCheck(struct GLUE_INFO *prGlueInfo)
 
 	prRxCtrl = &prGlueInfo->prAdapter->rRxCtrl;
 
-	if (RX_GET_TOTAL_RFB_CNT(prGlueInfo) < CFG_RX_RFB_MEM_LEAK_THRESHOLD) {
-		DBGLOG(RX, WARN,
-			"Monitor RFB memory leak, Rfb[%u/%u/%u/%u/%u/%u/%u/%u]\n",
-			RX_GET_FREE_RFB_CNT(prRxCtrl),
-			RX_GET_HIF_RECEIVED_RFB_CNT(prRxCtrl),
-			RX_GET_RECEIVED_RFB_CNT(prRxCtrl),
-			RX_GET_REORDERING_TOTAL_CNT(prGlueInfo->prAdapter),
-			RX_GET_PENDING_RFB_CNT(prGlueInfo->prAdapter),
-			RX_GET_INDICATED_RFB_CNT(prRxCtrl),
-			RX_GET_UNUSE_RFB_CNT(prRxCtrl),
-			KAL_GET_FIFO_CNT(prGlueInfo),
-			CFG_RX_MAX_PKT_NUM);
+	if (RX_GET_TOTAL_RFB_CNT(prGlueInfo) >= CFG_RX_RFB_MEM_LEAK_THRESHOLD) {
+		prRxCtrl->u4CheckRFBFailTime = 0;
+		return;
+	}
 
-		if (prRxCtrl->u4CheckRFBFailTime
-			&& TIME_AFTER(kalGetTimeTick(),
-				prRxCtrl->u4CheckRFBFailTime)) {
-			DBGLOG(RX, ERROR,
-				"Trigger chip reset due to RFB memory leak\n");
-			GL_DEFAULT_RESET_TRIGGER(prGlueInfo->prAdapter,
-				RST_RFB_FAIL);
-		}
-
+	/* If CheckRFBFailTime is 0 that indicates the first detection of a
+	  * small amount of SWRFB, and set the next detection time to double
+	  * confirm SWRFB leaks is not false alarm.
+	  */
+	if (prRxCtrl->u4CheckRFBFailTime == 0) {
 		prRxCtrl->u4CheckRFBFailTime = kalGetTimeTick()
 			+ CFG_RX_RFB_MEM_LEAK_INTERVAL;
-	} else {
-		prRxCtrl->u4CheckRFBFailTime = 0;
+		DBGLOG_LIMITED(RX, INFO,
+			"Monitor RFB memory leak, check RFB fail time : %u\n",
+			prRxCtrl->u4CheckRFBFailTime);
+		return;
+	}
+
+	if (TIME_AFTER(kalGetTimeTick(), prRxCtrl->u4CheckRFBFailTime)) {
+		DBGLOG(RX, ERROR,
+			"Trigger chip reset due to RFB memory leak\n");
+		GL_DEFAULT_RESET_TRIGGER(prGlueInfo->prAdapter,
+			RST_RFB_FAIL);
 	}
 }
 
@@ -2770,6 +2777,12 @@ void kalInformFtEvent(struct GLUE_INFO *prGlueInfo, uint8_t ucBssIndex)
 		mld_starec = mldStarecGetByStarec(prAdapter,
 			ft_param->prTargetAp);
 
+		if (!mld_starec || !mld_bssinfo) {
+			DBGLOG(INIT, WARN, "mld_starec=%p, mld_bssinfo=%p\n",
+			       mld_starec, mld_bssinfo);
+			goto mld_formed_end;
+		}
+
 		/* Vendor[PRE_WIFI7[ML[STA Profile * N]]] */
 
 		MTK_OUI_IE(vendor_ie)->ucId = ELEM_ID_VENDOR;
@@ -2819,7 +2832,7 @@ void kalInformFtEvent(struct GLUE_INFO *prGlueInfo, uint8_t ucBssIndex)
 			bssinfo = GET_BSS_INFO_BY_INDEX(prAdapter,
 					starec->ucBssIndex);
 
-			if (bssinfo->ucBssIndex == ucBssIndex)
+			if (!bssinfo || bssinfo->ucBssIndex == ucBssIndex)
 				continue;
 
 			sta_ctrl->ucSubID = SUB_IE_MLD_PER_STA_PROFILE;
@@ -2854,6 +2867,8 @@ void kalInformFtEvent(struct GLUE_INFO *prGlueInfo, uint8_t ucBssIndex)
 		DBGLOG(INIT, INFO, "FT: MTK_PRE_WIFI7");
 		DBGLOG_MEM8(INIT, INFO, vendor_ie, IE_SIZE(vendor_ie));
 	}
+
+mld_formed_end:
 #endif
 
 	ft_event.ies = buf;
@@ -3746,8 +3761,9 @@ kalHardStartXmit(struct sk_buff *prOrgSkb,
 				prAdapter, prMldStaRec->u2SecondMldId);
 
 			/* only second link is active, change bssinfo */
-			if (prMldStaRec->u4ActiveStaBitmap ==
-			    BIT(prStaRec->ucIndex)) {
+			if (prStaRec &&
+			    prMldStaRec->u4ActiveStaBitmap ==
+					BIT(prStaRec->ucIndex)) {
 				ucBssIndex = prStaRec->ucBssIndex;
 				prBssInfo = GET_BSS_INFO_BY_INDEX(
 					prAdapter, ucBssIndex);
@@ -4892,6 +4908,7 @@ kalIoctlByBssIdx(struct GLUE_INFO *prGlueInfo,
 
 	if (g_u4HaltFlag) {
 		up(&g_halt_sem);
+		DBGLOG(OID, WARN, "g_u4HaltFlag = %u\n", g_u4HaltFlag);
 		return WLAN_STATUS_ADAPTER_NOT_READY;
 	}
 
@@ -4907,7 +4924,8 @@ kalIoctlByBssIdx(struct GLUE_INFO *prGlueInfo,
 	if (kalIsResetting()) {
 		up(&prGlueInfo->ioctl_sem);
 		up(&g_halt_sem);
-		return WLAN_STATUS_SUCCESS;
+		DBGLOG(OID, WARN, "Driver is resetting.\n");
+		return WLAN_STATUS_ADAPTER_NOT_READY;
 	}
 
 	ASSERT(prGlueInfo->prAdapter);
@@ -4915,7 +4933,8 @@ kalIoctlByBssIdx(struct GLUE_INFO *prGlueInfo,
 	if (wlanIsChipAssert(prGlueInfo->prAdapter)) {
 		up(&prGlueInfo->ioctl_sem);
 		up(&g_halt_sem);
-		return WLAN_STATUS_SUCCESS;
+		DBGLOG(OID, WARN, "wlanIsChipAssert.\n");
+		return WLAN_STATUS_ADAPTER_NOT_READY;
 	}
 
 	if (prGlueInfo->main_thread == NULL) {
@@ -13656,24 +13675,23 @@ int kalNapiPoll(struct napi_struct *napi, int budget)
 #endif
 	static int32_t i4UserCnt;
 
+	if (HAL_IS_RX_DIRECT(prGlueInfo->prAdapter)) {
 #if CFG_QUEUE_RX_IF_CONN_NOT_READY
-	if (HAL_IS_RX_DIRECT(prAdapter))
 		nicRxDequeuePendingQueue(prAdapter);
 #endif /* CFG_QUEUE_RX_IF_CONN_NOT_READY */
-
-	/* Added in qmHandleReorderBubbleTimeout */
-	while (prReorderQueParm =
+		/* Added in qmHandleReorderBubbleTimeout */
+		while (prReorderQueParm =
 			getReorderQueParm(&prAdapter->rTimeoutRxBaEntry,
 				prAdapter, SPIN_LOCK_RX_FLUSH_TIMEOUT))
-		qmFlushTimeoutReorderBubble(prAdapter, prReorderQueParm);
+			qmFlushTimeoutReorderBubble(prAdapter,
+				prReorderQueParm);
 
-	/* Added in qmDelRxBaEntry */
-	while (prReorderQueParm =
+		/* Added in qmDelRxBaEntry */
+		while (prReorderQueParm =
 			getReorderQueParm(&prAdapter->rFlushRxBaEntry,
 				prAdapter, SPIN_LOCK_RX_FLUSH_BA))
-		qmFlushDeletedBaReorder(prAdapter, prReorderQueParm);
+			qmFlushDeletedBaReorder(prAdapter, prReorderQueParm);
 
-	if (HAL_IS_RX_DIRECT(prGlueInfo->prAdapter)) {
 		/* Handle SwRFBs under RX-direct mode */
 		return TRACE(kalNapiPollSwRfb(napi, budget),
 			"kalNapiPollSwRfb");
@@ -15382,6 +15400,9 @@ static void kalVnfSendCmd(struct VOLT_INFO_T *prVnfInfo, unsigned int u4volt)
 			"prVnfInfo or prVnfInfo->prAdapter is NULL\n");
 		return;
 	}
+
+	kalMemZero(&rVnf, sizeof(rVnf));
+
 	/* fill in CMD buffer */
 	rVnf.u2Volt = (uint16_t)u4volt;
 

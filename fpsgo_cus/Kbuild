@@ -57,3 +57,30 @@ ifeq (m,$(CONFIG_MTK_FPSGO_V3))
     always-y += src/.xgf_v3_ko_quark_no_cfi.o.cmd
   endif
 endif
+
+
+ccflags-y += \
+	     -I$(DEVICE_MODULES_PATH)/include/ \
+		 -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/mt-plat/
+
+ifeq ($(CONFIG_MTK_FPSGO_V3),$(filter $(CONFIG_MTK_FPSGO_V3),m))
+ccflags-y += -DCONFIG_MTK_FPSGO_V3
+subdir-ccflags-y += -DCONFIG_MTK_FPSGO_V3
+endif
+
+ifeq (m,$(CONFIG_MTK_GAME))
+  obj-m += game.o
+  game-y += src/game_main.o
+  ifeq (y,$(CONFIG_CFI_CLANG))
+    ifeq (y,$(CONFIG_SHADOW_CALL_STACK))
+      game-y += src/game_private_quark.o
+      always-y += src/.game_private_quark.o.cmd
+    else
+      game-y += src/game_private_quark_no_scs.o
+      always-y += src/.game_private_qark_no_scs.o.cmd
+    endif
+  else
+      game-y += src/game_private_quark_no_cfi.o
+      always-y += src/.game_private_quark_no_cfi.o.cmd
+  endif
+endif

@@ -17,6 +17,7 @@ enum mtk_common_debug_types {
 	MTK_COMMON_DBG_TRIGGER_BUG_ON,
 	MTK_COMMON_DBG_DUMP_FULL_DB,
 	MTK_COMMON_DBG_DUMP_DB_BY_SETTING,
+	MTK_COMMON_DBG_DUMP_GIC_STATUS,
 };
 
 #define MTK_DBG_HOOK_NA                                        ((u64)0x0)
@@ -66,6 +67,9 @@ int mtk_common_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx);
 int mtk_common_ged_dvfs_get_last_commit_idx(void);
 int mtk_common_ged_dvfs_get_last_commit_top_idx(void);
 int mtk_common_ged_dvfs_get_last_commit_stack_idx(void);
+
+/* Dump gic status */
+void mtk_debug_dump_gic_status(struct kbase_device *kbdev);
 
 unsigned long mtk_common_ged_dvfs_write_sysram_last_commit_idx(void);
 unsigned long mtk_common_ged_dvfs_write_sysram_last_commit_top_idx(void);

@@ -1953,8 +1953,10 @@ void nicTxMsduQueueByRR(struct ADAPTER *prAdapter)
 
 	KAL_RELEASE_SPIN_LOCK(prAdapter, SPIN_LOCK_TX_PORT_QUE);
 
-	nicTxMsduQueue(prAdapter, 0, prDataPort0);
-	nicTxMsduQueue(prAdapter, 0, prDataPort1);
+	if (QUEUE_IS_NOT_EMPTY(prDataPort0))
+		nicTxMsduQueue(prAdapter, 0, prDataPort0);
+	if (QUEUE_IS_NOT_EMPTY(prDataPort1))
+		nicTxMsduQueue(prAdapter, 0, prDataPort1);
 
 	KAL_ACQUIRE_SPIN_LOCK(prAdapter, SPIN_LOCK_TX_PORT_QUE);
 	/* Enque from dataQ to TCQ if TX don't finish */
@@ -3682,18 +3684,20 @@ uint32_t nicTxFlush(struct ADAPTER *prAdapter)
 		nicTxDirectClearAllStaAcmQ(prAdapter);
 		nicTxDirectClearAllStaPsQ(prAdapter);
 		nicTxDirectClearAllStaPendQ(prAdapter);
-	} else {
-		/* ask Per STA/AC queue to be fllushed
-		 * and return all queued packets
-		 */
-		KAL_ACQUIRE_SPIN_LOCK(prAdapter, SPIN_LOCK_QM_TX_QUEUE);
-		prMsduInfo = qmFlushTxQueues(prAdapter);
-		KAL_RELEASE_SPIN_LOCK(prAdapter, SPIN_LOCK_QM_TX_QUEUE);
+	}
 
-		if (prMsduInfo != NULL) {
-			nicTxFreeMsduInfoPacket(prAdapter, prMsduInfo);
-			nicTxReturnMsduInfo(prAdapter, prMsduInfo);
-		}
+	/*
+	 * Flush Per STA/AC queue and return all packets.
+	 * Note that Rx Forward Pkt will go through legacy tx path even
+	 * tx direct is enabled.
+	 */
+	KAL_ACQUIRE_SPIN_LOCK(prAdapter, SPIN_LOCK_QM_TX_QUEUE);
+	prMsduInfo = qmFlushTxQueues(prAdapter);
+	KAL_RELEASE_SPIN_LOCK(prAdapter, SPIN_LOCK_QM_TX_QUEUE);
+
+	if (prMsduInfo != NULL) {
+		nicTxFreeMsduInfoPacket(prAdapter, prMsduInfo);
+		nicTxReturnMsduInfo(prAdapter, prMsduInfo);
 	}
 
 	return WLAN_STATUS_SUCCESS;

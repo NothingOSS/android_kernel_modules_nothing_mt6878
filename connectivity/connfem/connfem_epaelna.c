@@ -6,8 +6,10 @@
 #include <linux/kernel.h>
 //#include <linux/err.h>
 #include <linux/string.h>
+#include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include "connfem.h"
 
 /*******************************************************************************
@@ -848,12 +850,18 @@ void cfm_epaelna_flags_obj_dump(enum connfem_subsys subsys,
 		pr_info("CmFlags.fe_conn_spdt: 0x%02x", cm_flags->fe_conn_spdt);
 		pr_info("CmFlags.fe_reserved: 0x%02x", cm_flags->fe_reserved);
 		pr_info("CmFlags.bd_type: 0x%02x", cm_flags->bd_type);
+		pr_info("CmFlags.fe_conn_dpdt_sp3t: 0x%02x", cm_flags->fe_conn_dpdt_sp3t);
+		pr_info("CmFlags.fe_bt_wf_usage: 0x%02x", cm_flags->fe_bt_wf_usage);
+		pr_info("CmFlags.fe_conn_spdt_2: 0x%02x", cm_flags->fe_conn_spdt_2);
 		break;
 
 	case CONNFEM_SUBSYS_WIFI:
 		wf_flags = (struct connfem_epaelna_flags_wifi *)flags_obj;
 		pr_info("WfFlags.open_loop: %d", wf_flags->open_loop);
 		pr_info("WfFlags.laa: %d", wf_flags->laa);
+		pr_info("WfFlags.epa_option: %d", wf_flags->epa_option);
+		pr_info("WfFlags.only_2g: %d", wf_flags->only_2g);
+		pr_info("WfFlags.nv_attr: %d", wf_flags->nv_attr);
 		break;
 
 	case CONNFEM_SUBSYS_BT:
@@ -862,6 +870,8 @@ void cfm_epaelna_flags_obj_dump(enum connfem_subsys subsys,
 		pr_info("BtFlags.epa_elna: %d", bt_flags->epa_elna);
 		pr_info("BtFlags.elna: %d", bt_flags->elna);
 		pr_info("BtFlags.epa: %d", bt_flags->epa);
+		pr_info("BtFlags.efem_mode: %d", bt_flags->efem_mode);
+		pr_info("BtFlags.rx_mode: %d", bt_flags->rx_mode);
 		break;
 
 	default:
@@ -898,4 +908,31 @@ void cfm_epaelna_flags_pairs_dump(enum connfem_subsys subsys,
 				i);
 		}
 	}
+}
+
+int cfm_epaelna_flags_config_get(void* ctx,
+		struct cfm_epaelna_flags_config** flags_config)
+{
+	struct connfem_epa_context *cfm = NULL;
+
+	if (!ctx || !flags_config)
+		return -EINVAL;
+
+	cfm = (struct connfem_epa_context *)ctx;
+
+	*flags_config = cfm->epaelna.flags_cfg;
+	return 0;
+}
+
+int cfm_epaelna_available_get(void* ctx, bool *avail)
+{
+	struct connfem_epa_context *cfm = NULL;
+
+	if (!ctx || !avail)
+		return -EINVAL;
+
+	cfm = (struct connfem_epa_context *)ctx;
+
+	*avail = cfm->epaelna.available;
+	return 0;
 }

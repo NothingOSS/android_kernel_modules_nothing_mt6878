@@ -590,6 +590,7 @@ int btmtk_sp_whole_chip_reset(struct btmtk_dev *bdev)
 int btmtk_sp_close(void)
 {
 	struct btmtk_uart_dev *cif_dev = NULL;
+	struct btmtk_main_info *bmain_info = btmtk_get_main_info();
 
 	BTMTK_INFO("%s enter!", __func__);
 	if (g_sbdev == NULL) {
@@ -608,12 +609,13 @@ int btmtk_sp_close(void)
 		BTMTK_WARN("%s: wait dump_comp , can't close yet", __func__);
 		if (!wait_for_completion_timeout(&g_sbdev->dump_comp, msecs_to_jiffies(WAIT_FW_DUMP_TIMEOUT))) {
 			BTMTK_ERR("%s: uanble to finish dump_comp in 15s", __func__);
+			/* trigger hif dump */
+			if (bmain_info->hif_hook.dump_hif_debug_sop) {
+				bmain_info->hif_hook.dump_hif_debug_sop(g_sbdev);
+				flush_work(&g_sbdev->hif_dump_work);
+			}
 			btmtk_sp_coredump_end();
 		}
-	}
-	if (atomic_read(&g_sbdev->assert_state) == BTMTK_ASSERT_START) {
-		BTMTK_WARN("%s: coredump not complete and without wait 15s", __func__);
-		btmtk_sp_coredump_end();
 	}
 
 	cancel_work_sync(&g_sbdev->reset_waker);
@@ -827,8 +829,8 @@ int btmtk_dump_start(void *priv_data, unsigned int force_dump){
 		return -1;
 	}
 
-	if (!force_dump && cif_dev->own_state != BTMTK_DRV_OWN) {
-		BTMTK_WARN("%s: not in drv own, force_dump[%d], own_state[%d]", __func__, force_dump, cif_dev->own_state);
+	if (!force_dump && atomic_read(&cif_dev->own_state) != BTMTK_DRV_OWN) {
+		BTMTK_WARN("%s: not in drv own, force_dump[%d], own_state[%d]", __func__, force_dump, atomic_read(&cif_dev->own_state));
 		return -1;
 	}
 

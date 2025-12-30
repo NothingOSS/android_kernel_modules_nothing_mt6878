@@ -256,8 +256,10 @@ uint32_t roamingFsmSendFtActionFrame(struct ADAPTER *prAdapter,
 		*pos++ = 7; /* common info length */
 
 		mld_bssinfo = mldBssGetByBss(prAdapter, prBssInfo);
-		COPY_MAC_ADDR(pos, mld_bssinfo->aucOwnMldAddr);
-		pos += MAC_ADDR_LEN;
+		if (mld_bssinfo) {
+			COPY_MAC_ADDR(pos, mld_bssinfo->aucOwnMldAddr);
+			pos += MAC_ADDR_LEN;
+		}
 	}
 #endif
 
@@ -1382,7 +1384,7 @@ uint32_t roamingFsmProcessEvent(struct ADAPTER *prAdapter,
 			(struct CMD_ROAMING_TRANSIT *) &rTransit);
 
 		/* fail when roaming is ongoing or during CSA*/
-		if (!roamingFsmInDecision(prAdapter, ucBssIndex)) {
+		if (!roamingFsmInDecision(prAdapter, FALSE, ucBssIndex)) {
 			DBGLOG(ROAMING, EVENT,
 				"There's ongoing roaming/CSA - ignore bssidx:%d\n",
 				ucBssIndex);
@@ -1409,7 +1411,8 @@ uint32_t roamingFsmProcessEvent(struct ADAPTER *prAdapter,
 	return WLAN_STATUS_SUCCESS;
 }
 
-uint8_t roamingFsmInDecision(struct ADAPTER *prAdapter, uint8_t ucBssIndex)
+uint8_t roamingFsmInDecision(struct ADAPTER *prAdapter,
+	u_int8_t fgIgnorePolicy, uint8_t ucBssIndex)
 {
 	struct AIS_FSM_INFO *ais;
 	struct ROAMING_INFO *roam;
@@ -1431,8 +1434,7 @@ uint8_t roamingFsmInDecision(struct ADAPTER *prAdapter, uint8_t ucBssIndex)
 	       !aisFsmIsSwitchChannel(prAdapter, ais) &&
 #endif
 	       !prAdapter->rWifiVar.fgDisRoaming &&
-	       policy != CONNECT_BY_BSSID ?
-	       TRUE : FALSE;
+	       (policy != CONNECT_BY_BSSID || fgIgnorePolicy);
 }
 
 u_int8_t roamingFsmCheckIfRoaming(struct ADAPTER *prAdapter,

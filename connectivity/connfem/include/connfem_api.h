@@ -9,20 +9,41 @@
 /*******************************************************************************
  *				M A C R O S
  ******************************************************************************/
-#define CONNFEM_EPAELNA_PIN_COUNT	32
+#define CONNFEM_API_VERSION		2
+
 #define CONNFEM_PART_NAME_SIZE		64
 #define CONNFEM_FLAG_NAME_SIZE		32
+
+/*
+ * ConnFem v1 - CONNFEM_TYPE_EPAELNA
+ */
+#define CONNFEM_EPAELNA_PIN_COUNT	32
 #define CONNFEM_EPAELNA_LAA_PIN_COUNT	8
+
+/*
+ * ConnFem v2 - CONNFEM_TYPE_SKU
+ */
+#define CONNFEM_SKU_FEM_COUNT		8
+#define CONNFEM_FEM_PIN_COUNT		8
+#define CONNFEM_FEM_LOGIC_COUNT		32
+#define CONNFEM_FEM_LOGIC_CAT_COUNT	8
+
+#define CONNFEM_SKU_LAYOUT_COUNT	16
+#define CONNFEM_SKU_LAYOUT_PIN_COUNT	16
 
 /*******************************************************************************
  *			    D A T A   T Y P E S
  ******************************************************************************/
 enum connfem_type {
 	CONNFEM_TYPE_NONE = 0,
-	CONNFEM_TYPE_EPAELNA = 1,
+	CONNFEM_TYPE_EPAELNA = 1,	/* !defined(CONNFEM_API_VERSION) */
+	CONNFEM_TYPE_SKU = 2,		/* CONNFEM_API_VERSION == 2 */
 	CONNFEM_TYPE_NUM
 };
 
+/*
+ * ConnFem v1 - CONNFEM_TYPE_EPAELNA
+ */
 enum connfem_subsys {
 	CONNFEM_SUBSYS_NONE = 0,
 	CONNFEM_SUBSYS_WIFI = 1,
@@ -78,6 +99,9 @@ struct connfem_epaelna_flags_common {
 	unsigned char fe_conn_spdt;
 	unsigned char fe_reserved;
 	unsigned char bd_type;
+	unsigned char fe_conn_dpdt_sp3t;
+	unsigned char fe_bt_wf_usage;
+	unsigned char fe_conn_spdt_2;
 };
 
 struct connfem_epaelna_flags_wifi {
@@ -85,6 +109,7 @@ struct connfem_epaelna_flags_wifi {
 	bool laa;
 	unsigned char epa_option;
 	bool only_2g;
+	unsigned char nv_attr;
 };
 
 struct connfem_epaelna_flags_bt {
@@ -92,6 +117,8 @@ struct connfem_epaelna_flags_bt {
 	bool epa_elna;
 	bool epa;
 	bool elna;
+	unsigned char efem_mode; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+	unsigned char rx_mode;
 };
 
 struct connfem_epaelna_flag_tbl_entry {
@@ -108,6 +135,89 @@ struct connfem_epaelna_subsys_cb {
 	void*(*flags_get)(void);
 	struct connfem_epaelna_flag_tbl_entry*(*flags_tbl_get)(void);
 	unsigned int (*flags_cnt)(void);
+};
+
+/*
+ * ConnFem v2 - CONNFEM_TYPE_SKU
+ */
+/* FEM Basic Info */
+struct connfem_sku_fem_info {
+	unsigned short vid;
+	unsigned short pid;
+	unsigned int flag;
+	char name[CONNFEM_PART_NAME_SIZE];
+};
+
+/* FEM Control PIN */
+struct connfem_sku_fem_ctrlpin {
+	unsigned int count;
+	unsigned char id[CONNFEM_FEM_PIN_COUNT];
+};
+
+/* Logic Truth Table */
+struct connfem_sku_fem_logic {
+	unsigned int op;
+	unsigned int binary;
+};
+
+struct connfem_sku_fem_truth_table {
+	unsigned int logic_count;
+	struct connfem_sku_fem_logic logic[CONNFEM_FEM_LOGIC_COUNT];
+};
+
+/* Truth Table Usage */
+struct connfem_sku_fem_logic_cat {
+	unsigned int id;
+	unsigned int op_count;
+	unsigned int op[CONNFEM_FEM_LOGIC_COUNT];
+};
+
+struct connfem_sku_fem_truth_table_usage {
+	unsigned int cat_count;
+	struct connfem_sku_fem_logic_cat cat[CONNFEM_FEM_LOGIC_CAT_COUNT];
+};
+
+/* Keep all sku information */
+struct connfem_sku_fem {
+	unsigned int magic_num;	/* CONNFEM_FEM_MAGIC_NUMBER */
+	struct connfem_sku_fem_info info;
+	struct connfem_sku_fem_ctrlpin ctrl_pin;
+	struct connfem_sku_fem_truth_table tt;
+	struct connfem_sku_fem_truth_table_usage tt_usage_wf;
+	struct connfem_sku_fem_truth_table_usage tt_usage_bt; /* Reserved */
+};
+
+struct connfem_sku_pinmap {
+	unsigned char pin1;	/* Antsel */
+	unsigned char pin2;	/* FEM Control PIN, or MD BPI PIN for LAA 4x4 */
+	unsigned char flag;	/* Polarity, or reserved for PIN mapping attribute */
+};
+
+struct connfem_sku_layout {
+	unsigned int fem_idx;
+
+	unsigned char bandpath[CONNFEM_SUBSYS_NUM];
+
+	unsigned int pin_count;
+	struct connfem_sku_pinmap pinmap[CONNFEM_SKU_LAYOUT_PIN_COUNT];
+};
+
+struct connfem_sku_spdt {
+	unsigned int magic_num;	/* CONNFEM_SPDT_MAGIC_NUMBER */
+	unsigned int pin_count;
+	struct connfem_sku_pinmap pinmap[CONNFEM_SKU_LAYOUT_PIN_COUNT];
+};
+
+struct connfem_sku {
+	unsigned int fem_count;
+	struct connfem_sku_fem fem[CONNFEM_SKU_FEM_COUNT];
+
+	unsigned int layout_flag;
+
+	unsigned int layout_count;
+	struct connfem_sku_layout layout[CONNFEM_SKU_LAYOUT_COUNT];
+
+	struct connfem_sku_spdt spdt;
 };
 
 /*******************************************************************************
@@ -133,5 +243,11 @@ extern int connfem_epaelna_laa_get_pin_info(
 			struct connfem_epaelna_laa_pin_info *laa_pin_info);
 
 extern int connfem_epaelna_get_flags(enum connfem_subsys subsys, void *flags);
+
+extern int connfem_sku_data(const struct connfem_sku **sku);
+
+extern int connfem_sku_flag_u8(enum connfem_subsys subsys,
+			const char *name,
+			unsigned char *value);
 
 #endif /* __CONNFEM_API_H__ */

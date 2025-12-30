@@ -159,6 +159,24 @@ void gps_dl_hw_dep_common_clear_wakeup_source(void)
 	ret = res.a0;
 }
 
+void gps_dl_hw_dep_common_dump_after_exit_dpstop_dsleep(void)
+{
+	unsigned int dump = 0;
+
+	/*need in v051 project*/
+	dump = GDL_HW_RD_GPS_REG(BGF_GPS_CFG_GPS_CLKGEN1_CTL_ADDR);
+	GDL_LOGI("exit dpstop, dump 0x18c21104 = 0x%08x", dump);
+}
+
+void gps_dl_hw_dep_common_dump_before_enter_dpstop_dsleep(void)
+{
+	unsigned int dump = 0;
+
+	/*need in v051 project*/
+	dump = GDL_HW_RD_GPS_REG(BGF_GPS_CFG_GPS_CLKGEN1_CTL_ADDR);
+	GDL_LOGI("enter dpstop, dump 0x18c21104 = 0x%08x", dump);
+}
+
 void gps_dl_hw_dep_cfg_dsp_mem(enum dsp_ctrl_enum ctrl)
 {
 	switch (ctrl) {

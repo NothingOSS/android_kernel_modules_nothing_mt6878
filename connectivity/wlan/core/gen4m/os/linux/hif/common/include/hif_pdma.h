@@ -608,8 +608,13 @@ struct RTMP_RX_RING {
 	bool fgIsWaitRxDmaDoneTimeout;
 	uint32_t u4LastRxEventWaitDmaDoneCnt;
 	uint32_t u4PendingCnt;
-	void *pvPacket;
-	uint32_t u4PacketLen;
+#if (CFG_SUPPORT_PDMA_SCATTER == 1)
+	void *pvSegPkt;
+	uint32_t u4SegPktLen;
+	uint32_t u4SegPktLenMax;
+	uint32_t u4SegPktIdx;
+	uint32_t u4SegPktIdxMax;
+#endif
 	uint32_t u4MagicCnt;
 #if CFG_MTK_WIFI_WFDMA_WB
 	u_int8_t fgEnEmiIdx;
@@ -847,6 +852,13 @@ enum ENUM_DMA_INT_TYPE {
 enum ENUM_WFDMA_RING_TYPE {
 	TX_RING,
 	RX_RING
+};
+
+enum ENUM_RX_SEGMENT_TYPE {
+	RX_SEGMENT_NONE = 0,
+	RX_SEGMENT_FIRST,
+	RX_SEGMENT_MIDDLE,
+	RX_SEGMENT_LAST
 };
 
 #if (CFG_SUPPORT_HOST_OFFLOAD == 1)

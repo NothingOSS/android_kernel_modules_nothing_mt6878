@@ -113,6 +113,7 @@ enum _ENUM_CHIP_RESET_REASON_TYPE_T {
 	RST_AER_SDES,
 	RST_MCU_INIT_FAIL,
 	RST_RFB_FAIL,
+	RST_WFDMA_MAP_FAIL,
 	RST_REASON_MAX
 };
 
@@ -254,6 +255,7 @@ void glSetRstReason(enum _ENUM_CHIP_RESET_REASON_TYPE_T eReason);
 int glGetRstReason(void);
 
 u_int8_t kalIsResetting(void);
+u_int8_t kalIsResetOnEnd(void);
 u_int8_t kalIsRstPreventFwOwn(void);
 
 void glResetUpdateFlag(u_int8_t fgIsResetting);

@@ -1840,11 +1840,6 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 				frm_info->request_fd, frm_info->user_info[frm_idx].subfrm_idx,
 				frm_info->user_info[frm_idx].hw_comb, frm_info->frm_owner,
 				frm_idx, frm_num, blk_idx);
-			// Add secure token begin
-			#if IMGSYS_SECURE_ENABLE
-			if (frm_info->user_info[frm_idx].is_secFrm)
-				imgsys_cmdq_sec_cmd_plat7sp(pkt);
-			#endif
 
 			ret = imgsys_cmdq_parser_plat7sp(imgsys_dev, frm_info, pkt,
 				&cmd[cmd_idx], hw_comb,
@@ -1861,12 +1856,6 @@ int imgsys_cmdq_sendtask_plat7sp(struct mtk_imgsys_dev *imgsys_dev,
 				goto sendtask_done;
 			}
 			cmd_idx += ret;
-
-			// Add secure token end
-			#if IMGSYS_SECURE_ENABLE
-			if (frm_info->user_info[frm_idx].is_secFrm)
-				imgsys_cmdq_sec_cmd_plat7sp(pkt);
-			#endif
 
 			IMGSYS_CMDQ_SYSTRACE_END();
 

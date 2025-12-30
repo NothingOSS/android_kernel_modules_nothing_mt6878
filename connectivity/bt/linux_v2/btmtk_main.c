@@ -795,10 +795,10 @@ void btmtk_hci_snoop_print_to_log(void)
 #else
 		"Tx_CMD_from_Stack",
 		"Tx_from_Drv",		/* for sp uart */
-		"Rx_EVT_to_Stack",
-		"Rx_from_TTY",		/* for sp uart */
+		"Rx_EVT_to_Driver",
+		"Rx_from_TTY_new",		/* for sp uart */
 		"ADV_EVT_to_Stack",
-		"ADV_EVT_from_FW",
+		"Rx_EVT_to_Stack",
 		"NOCP_EVT_to_Stack",
 		"NOCP_EVT_from_FW",
 		"Tx_ACL_from_Stack",
@@ -3774,13 +3774,21 @@ int btmtk_send_assert_cmd(struct btmtk_dev *bdev)
 #if (SLEEP_ENABLE == 0)
 	ret = main_info.hif_hook.send_cmd(bdev, skb, WMT_DELAY_TIMES, RETRY_TIMES, (int)BTMTK_TX_CMD_FROM_DRV);
 #else
-	ret = main_info.hif_hook.send_cmd(bdev, skb, WMT_DELAY_TIMES, RETRY_TIMES, (int)BTMTK_TX_PKT_SEND_DIRECT);
+	/* use btmtk_main_send_cmd make sure drv own for BTMTK_TX_PKT_SEND_DIRECT
+	 * evt would be same with cmd
+	 */
+	ret = btmtk_main_send_cmd(g_sbdev, cmd, sizeof(cmd), cmd, sizeof(cmd), DELAY_TIMES, RETRY_TIMES, BTMTK_TX_PKT_SEND_DIRECT_NO_ASSERT);
 #endif
+
 	if (ret < 0 && skb) {
 		BTMTK_ERR("%s failed!!", __func__);
 		kfree_skb(skb);
 		skb = NULL;
+#if (USE_DEVICE_NODE == 0)
 		btmtk_reset_trigger(bdev);
+#else
+		return ret;
+#endif
 	} else {
 		btmtk_reset_timer_update(bdev);
 		BTMTK_INFO("%s: OK", __func__);
@@ -4829,6 +4837,8 @@ static void btmtk_rx_work(struct work_struct *work)
 				skb = NULL;
 				continue;
 			}
+
+			btmtk_hci_snoop_save(HCI_SNOOP_TYPE_ADV_EVT_HIF, skb->data, skb->len);
 		} else if (hci_skb_pkt_type(skb) == HCI_ACLDATA_PKT) {
 			/* save hci acl pkt for debug, not include picus log and coredump*/
 			if (!(skb->data[0] == 0xFF && skb->data[1] == 0xF0))

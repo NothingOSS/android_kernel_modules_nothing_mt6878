@@ -229,6 +229,10 @@ extern u_int8_t wlan_perf_monitor_force_enable;
 /* OID waiting time (12s) */
 #define KAL_OID_WAIT_TIME	(WLAN_OID_TIMEOUT_THRESHOLD + 10000)
 
+#if CFG_MODIFY_TX_POWER_BY_BAT_VOLT
+#define BACKOFF_VOLT 3550
+#define RESTORE_VOLT 3750
+#endif
 /*******************************************************************************
  *                             D A T A   T Y P E S
  *******************************************************************************

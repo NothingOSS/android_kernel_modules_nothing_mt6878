@@ -6,6 +6,7 @@
 #include <linux/kernel.h>
 #include <linux/of_platform.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/of_gpio.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/iio/consumer.h>
@@ -29,7 +30,8 @@
  *		    F U N C T I O N   D E C L A R A T I O N S
  ******************************************************************************/
 static int cfm_dt_epaelna_parse(struct device_node *np,
-				struct connfem_context *cfm);
+		struct connfem_epa_context *cfm);
+
 static void cfm_dt_epaelna_free(struct cfm_dt_epaelna_context *dt,
 				bool free_all);
 
@@ -110,11 +112,8 @@ static int cfm_dt_epaelna_pctl_data_laa_pinmux_parse(
 
 static int cfm_dt_epaelna_flags_parse(
 		struct device_node *np,
-		unsigned int hwid,
+		const char *hw_name,
 		struct cfm_dt_epaelna_flags_context *flags_out);
-
-static void cfm_dt_epaelna_flags_free(
-		struct cfm_dt_epaelna_flags_context *flags);
 
 static int cfm_dt_epaelna_pin_mapping_get(
 		struct device_node *dn,
@@ -131,11 +130,32 @@ static int cfm_dt_cfg_is_antsel_match(
 		struct connfem_epaelna_pin_info *dp_info,
 		struct connfem_epaelna_pin_info *cp_info);
 
-static struct device_node* cfm_dt_child_find (
-		struct device_node *dn, ...);
+struct device_node* cfm_dt_child_find(struct device_node *dn,
+		const char** node_names);
 
 static struct property* cfm_dt_prop_find (
 		struct device_node *dn, ...);
+
+static int cfm_dt_sku_data_parse(struct device_node *np,
+		struct connfem_sku_context *cfm);
+
+static int cfm_dt_sku_hw_np_fetch(
+		struct device_node *np,	unsigned int hwid,
+		struct device_node **np_out);
+
+static int cfm_dt_epaelna_flags_name_get(
+		unsigned int hwid,
+		size_t name_out_size,
+		char *name_out);
+
+static int cfm_dt_sku_fem_data_hdl(struct device_node *np,
+				struct connfem_sku *cfm_sku);
+
+static int cfm_dt_sku_layout_data_hdl(struct device_node *np,
+				struct connfem_sku *cfm_sku);
+
+static struct device_node* cfm_dt_node_parse_helper(void *cfm,
+		const char **internal_node_names, const char **node_names);
 
 /*******************************************************************************
  *			    P U B L I C   D A T A
@@ -145,31 +165,90 @@ static struct property* cfm_dt_prop_find (
 /*******************************************************************************
  *			   P R I V A T E   D A T A
  ******************************************************************************/
-
+/* The following arrays must end in NULL */
+const char *cfm_sku_nodenames[]		= {CFM_DT_NODE_SKU};
+const char *cfm_sku_mtk_nodenames[]	= {CFM_DT_NODE_SKU_MTK};
+const char *cfm_epaelna_nodenames[]	= {CFM_DT_NODE_EPAELNA};
+const char *cfm_epaelna_mtk_nodenames[]	= {CFM_DT_NODE_EPAELNA_MTK};
 
 /*******************************************************************************
  *			      F U N C T I O N S
  ******************************************************************************/
-int cfm_dt_parse(struct connfem_context *cfm)
+static struct device_node* cfm_dt_node_parse_helper(void *cfm,
+		const char **internal_node_names, const char **node_names)
 {
-	int err = 0;
-	struct device_node *dn = cfm->pdev->dev.of_node;
+	struct device_node *dn;
 	struct device_node *np = NULL;
 
-	if (connfem_is_internal()) {
-		np = cfm_dt_child_find(dn, CFM_DT_NODE_EPAELNA_MTK);
+	if (!cfm || !internal_node_names || !node_names) {
+		pr_info("%s: Missing input", __func__);
+		return NULL;
 	}
 
-	if (!np) {
-		np = cfm_dt_child_find(dn, CFM_DT_NODE_EPAELNA);
+	dn = ((struct connfem_context_ops *)cfm)->pdev->dev.of_node;
+
+	/* Search internal node ... */
+	if (connfem_is_internal()) {
+		np = cfm_dt_child_find(dn, internal_node_names);
 	}
+
+	/* If no internal node, search another node ... */
+	if (!np) {
+		np = cfm_dt_child_find(dn, node_names);
+	}
+
+	return np;
+}
+
+int cfm_dt_epa_parse(void *cfm)
+{
+	int err = 0;
+	struct device_node *np = NULL;
+
+	if (!cfm) {
+		pr_info("%s: Missing input", __func__);
+		return -EINVAL;
+	}
+
+	np = cfm_dt_node_parse_helper(cfm,
+				cfm_epaelna_mtk_nodenames,
+				cfm_epaelna_nodenames);
 
 	if (np) {
-		err = cfm_dt_epaelna_parse(np, cfm);
-		of_node_put(np);
-		np = NULL;
+		pr_info("Find node '%s'", np->name);
+		err = cfm_dt_epaelna_parse(np,
+			(struct connfem_epa_context *)cfm);
+		CFM_DT_PUT_NP(np);
 	} else {
 		pr_info("Missing epa elna node");
+		err = -EINVAL;
+	}
+
+	return err;
+}
+
+int cfm_dt_sku_parse(void *cfm)
+{
+	int err = 0;
+	struct device_node *np = NULL;
+
+	if (!cfm) {
+		pr_info("%s: Missing input", __func__);
+		return -EINVAL;
+	}
+
+	np = cfm_dt_node_parse_helper(cfm,
+				cfm_sku_mtk_nodenames,
+				cfm_sku_nodenames);
+
+	if (np) {
+		pr_info("Find node '%s'", np->name);
+		err = cfm_dt_sku_data_parse(np,
+			(struct connfem_sku_context *)cfm);
+		CFM_DT_PUT_NP(np);
+	} else {
+		pr_info("Missing sku node");
+		err = -EINVAL;
 	}
 
 	return err;
@@ -180,9 +259,9 @@ void cfm_dt_free(struct cfm_dt_context *dt)
 	cfm_dt_epaelna_free(&dt->epaelna, true);
 }
 
-int cfm_dt_cfg_ext(struct connfem_context *cfm)
+int cfm_dt_cfg_ext(struct connfem_epa_context *cfm)
 {
-	struct platform_device *pdev = cfm->pdev;
+	struct platform_device *pdev = cfm->ops.pdev;
 	struct cfm_epaelna_config *cfg = &cfm->epaelna;
 	struct cfm_dt_epaelna_context *dt = &cfm->dt.epaelna;
 
@@ -262,7 +341,7 @@ static void cfm_dt_epaelna_pctl_state_free(
 	pstate->np_cnt = 0;
 }
 
-static void cfm_dt_epaelna_flags_free(
+void cfm_dt_epaelna_flags_free(
 		struct cfm_dt_epaelna_flags_context *flags)
 {
 	int i;
@@ -279,10 +358,10 @@ static void cfm_dt_epaelna_flags_free(
 }
 
 static int cfm_dt_epaelna_parse(struct device_node *np,
-				struct connfem_context *cfm)
+		struct connfem_epa_context *cfm)
 {
 	int err = 0;
-	struct device_node *dn = cfm->pdev->dev.of_node;
+	struct device_node *dn = cfm->ops.pdev->dev.of_node;
 	struct cfm_dt_epaelna_context *dt = &cfm->dt.epaelna;
 	struct cfm_epaelna_config *result = &cfm->epaelna;
 	unsigned int hwid;
@@ -295,7 +374,7 @@ static int cfm_dt_epaelna_parse(struct device_node *np,
 	/* HWID property is optional, but must be valid if it exists */
 	hwid = cfm_param_epaelna_hwid();
 	if (hwid == CFM_PARAM_EPAELNA_HWID_INVALID) {
-		err = cfm_dt_epaelna_hwid_parse(np, cfm->pdev, &dt->hwid);
+		err = cfm_dt_epaelna_hwid_parse(np, cfm->ops.pdev, &dt->hwid);
 		if (err == -ENOENT)
 			dt->hwid = 0;
 		else if (err == -EAGAIN)
@@ -304,7 +383,7 @@ static int cfm_dt_epaelna_parse(struct device_node *np,
 			return -EINVAL;
 	} else {
 		dt->hwid = hwid;
-		pr_info("Force HWID: %d", dt->hwid);
+		pr_info("Force HWID: %u", dt->hwid);
 	}
 
 	/* Parse parts property */
@@ -341,8 +420,18 @@ static int cfm_dt_epaelna_parse(struct device_node *np,
 	if (result->fem_info.id)
 		result->available = true;
 
+	/* Get flag's node_name */
+	err = cfm_dt_epaelna_flags_name_get(dt->hwid,
+			sizeof(dt->flags.node_name),
+			dt->flags.node_name);
+
+	if (err < 0) {
+		err = -EINVAL;
+		goto dt_epaelna_err;
+	}
+
 	/* Parse subsys flags nodes */
-	err = cfm_dt_epaelna_flags_parse(np, dt->hwid, &dt->flags);
+	err = cfm_dt_epaelna_flags_parse(np, dt->flags.node_name, &dt->flags);
 	if (err < 0) {
 		err = -EINVAL;
 		goto dt_epaelna_err;
@@ -401,7 +490,7 @@ static int cfm_dt_epaelna_parse(struct device_node *np,
 
 	/* Apply PINMUX only if device tree successfully parsed */
 	if (cfm_dt_epaelna_pctl_exists(&dt->pctl)) {
-		err = cfm_dt_epaelna_pctl_pinmux_apply(cfm->pdev, &dt->pctl);
+		err = cfm_dt_epaelna_pctl_pinmux_apply(cfm->ops.pdev, &dt->pctl);
 		if (err < 0) {
 			err = -EINVAL;
 			goto dt_epaelna_err;
@@ -426,7 +515,7 @@ static int cfm_dt_epaelna_parse(struct device_node *np,
 
 	/* Apply PINMUX only if device tree successfully parsed */
 	if (cfm_dt_epaelna_pctl_exists(&dt->bt_pctl)) {
-		err = cfm_dt_epaelna_pctl_pinmux_apply(cfm->pdev, &dt->bt_pctl);
+		err = cfm_dt_epaelna_pctl_pinmux_apply(cfm->ops.pdev, &dt->bt_pctl);
 		if (err < 0) {
 			err = -EINVAL;
 			goto dt_epaelna_err;
@@ -531,12 +620,17 @@ static int cfm_dt_epaelna_hwid_gpio_parse(struct device_node *np,
 				     unsigned int *hwid_out,
 				     unsigned int *nbits_out)
 {
-	int i, cnt, gpio_num;
+	int i, cnt = 0, gpio_num;
 	unsigned int hwid = 0;
 	unsigned int consumed_bits = 0;
 	unsigned int gpio_value = 0;
 
-	cnt = of_gpio_named_count(np, CFM_DT_PROP_GPIO);
+	/* CFM_DT_PROP_GPIO_CELLS (#gpio-cells) is defined in mtXXXX.dts
+	 * In the normal case, it should be 2. Hence, dts needs to be set
+	 * up in the form like gpio = <&pio 132 0>;
+	 */
+	cnt = of_count_phandle_with_args(np, CFM_DT_PROP_GPIO,
+					CFM_DT_PROP_GPIO_CELLS);
 	if (cnt <= 0 && cnt != -ENOENT) {
 		pr_info("Invalid '%s' property", CFM_DT_PROP_GPIO);
 		return -EINVAL;
@@ -1017,7 +1111,7 @@ static int cfm_dt_epaelna_pctl_state_parse(
 	}
 
 	if (err < 0) {
-		pr_info("[INFO] pctl state name not found, err %d", err);
+		pr_info("pctl state name not found, err %d", err);
 		return err;	/* -ENOENT, -EINVAL */
 	}
 
@@ -1103,7 +1197,7 @@ static int cfm_dt_epaelna_pctl_state_find(
 	}
 
 	if (!name) {
-		pr_info("[INFO] pinctrl-names does not have '%s' state",
+		pr_info("pinctrl-names does not have '%s' state",
 			state_name);
 		return -ENOENT;
 	}
@@ -1433,7 +1527,8 @@ static int cfm_dt_epaelna_pctl_data_laa_pinmux_parse(
  *
  * Parameters
  *	np	 : Pointer to the epa_elna/_mtk node containing the subsys node.
- *	hwid	 : Indication on which flag node to be selected.
+ *	hw_name	 : Indication on which flag node to be selected. (flags-N or
+ *		   flags)
  *	flags_out: Pointer to the flags context for storing the parsed states.
  *
  * Return value
@@ -1443,27 +1538,19 @@ static int cfm_dt_epaelna_pctl_data_laa_pinmux_parse(
  */
 static int cfm_dt_epaelna_flags_parse(
 		struct device_node *np,
-		unsigned int hwid,
+		const char *hw_name,
 		struct cfm_dt_epaelna_flags_context *flags_out)
 {
-	int i, c;
+	int i;
 	struct device_node *subsys_np;
 	struct cfm_dt_epaelna_flags_context flags;
 
 	memset(&flags, 0, sizeof(flags));
 
-	/* Flags node name is based on hwid, it's the same for all subsys */
-	c = snprintf(flags.node_name, sizeof(flags.node_name),
-		 "%s%d",
-		 CFM_DT_PROP_FLAGS_PREFIX, hwid);
-	if (c < 0 || c >= sizeof(flags.node_name)) {
-		pr_info("flag node name error %d, sz %u, '%s%d'",
-			c,
-			(unsigned int)sizeof(flags.node_name),
-			CFM_DT_PROP_FLAGS_PREFIX,
-			hwid);
-		return -EINVAL;
-	}
+	strncpy(flags.node_name, hw_name,
+		sizeof(flags.node_name) - 1);
+
+	flags.node_name[sizeof(flags.node_name) - 1] = 0;
 
 	/* Collect subsys' flags node if valid */
 	for (i = 0; i < CONNFEM_SUBSYS_NUM; i++) {
@@ -1663,33 +1750,27 @@ static int cfm_dt_cfg_is_antsel_match(
  * 2. Try to find legacy name to backward compatible.
  *
  * Parameters
- * dn : (IN) Pointer to parent device node.
- * name_list: (IN) Support name list.
- * out_name : (OUTPUT) Return the mapping name.
+ * dn	: (IN) Pointer to parent device node.
+ * node_names: (IN) Support name list.
  *
  * Return value
- * 0 : Success, node/property name is existed.
+ * 0	: Success, node/property name is existed.
  * -EINVAL : Fail to find the mapping name.
  *
  */
-static struct device_node* cfm_dt_child_find (
-		struct device_node *dn, ...)
+struct device_node* cfm_dt_child_find(struct device_node *dn,
+		const char** node_names)
 {
-	char *idx;
-	struct device_node *np;
-	va_list args;
-
-	va_start(args, dn);
-	while ((idx = va_arg(args, char *)) != NULL) {
-		if ((np = of_get_child_by_name(dn, idx)) != NULL) {
-			pr_info("Find node '%s'", np->name);
-			va_end(args);
-			return np;
-		}
+	const char **name = node_names;
+	struct device_node *np = NULL;
+	if (!dn || !node_names) {
+		return NULL;
 	}
 
-	va_end(args);
-	return NULL;
+	while (*name && !(np = of_get_child_by_name(dn, *name))) {
+		name++;
+	}
+	return np;
 }
 
 /**
@@ -1724,4 +1805,462 @@ static struct property* cfm_dt_prop_find (
 
 	va_end(args);
 	return NULL;
+}
+
+static int cfm_dt_sku_data_parse(struct device_node *np,
+		struct connfem_sku_context *cfm)
+{
+	int err = 0, lerr = 0, i = 0;
+	struct connfem_sku *sku = &cfm->sku;
+	struct cfm_dt_epaelna_flags_context *flags = &cfm->flags;
+	struct cfm_epaelna_flags_config *flags_cfg = cfm->flags_cfg;
+	unsigned int hwid;
+	struct device_node *hw_np = NULL;
+	struct of_phandle_iterator it;
+	const char *hw_name = cfm_param_hw_name();
+
+	cfm_dt_sku_data_reset(cfm);
+
+	/* Parse HWID
+	 * We have a priority hierarchy for handling the hardware ID (hwid),
+	 * which is as follows from high to low:
+	 * (1) hwid (from config or insmod)
+	 * (2) hw_names (from config or insmod)
+	 * (3) GPIO.
+	 */
+	hwid = *cfm_param_hwid();
+	/* Check if hw_name has content matching any names
+	* specified in DT tree. If hw_name is matched with name
+	* defined in DTS, hwid will be updated. However, if prop
+	* hw_names cannot be found or name cannot be matched, we
+	* do not regard this as an error.
+	*/
+	if (hwid == CFM_PARAM_HWID_INVALID) {
+		if (hw_name[0] != '\0') {
+			err = of_property_match_string(np,
+							CFM_DT_PROP_HW_NAMES,
+							hw_name);
+			if (err >= 0) {
+				hwid = (unsigned int)err;
+				pr_info("hw_name matched. HWID update: %d",
+					hwid);
+			}
+		}
+	}
+	if (hwid == CFM_PARAM_HWID_INVALID) {
+		err = cfm_dt_epaelna_hwid_parse(np, cfm->ops.pdev, &hwid);
+		if (err == -ENOENT)
+			hwid = 0;
+		else if (err == -EAGAIN)
+			return err;
+		else if (err < 0)
+			return -EINVAL;
+	}
+	if (hwid == CFM_PARAM_HWID_INVALID) {
+		hwid = 0;
+		pr_info("hwid is set to default value: %d", hwid);
+	}
+	cfm->hwid = hwid;
+
+	/* Note that we need to re-get hw_name if hw_name is null string
+	 * via hwid because hw_name is not only acquired through config
+	 * mechanism.
+	*/
+	if (hw_name[0] == '\0') {
+		err = of_property_read_string_index(np,
+						CFM_DT_PROP_HW_NAMES,
+						cfm->hwid,
+						&hw_name);
+		if (err < 0) {
+			pr_info("Error (%d) when parsing '%s' property",
+				err, CFM_DT_PROP_HW_NAMES);
+			return -EINVAL;
+		}
+
+		err = cfm_param_hw_name_set(hw_name, strlen(hw_name) + 1);
+		if (err < 0) {
+			pr_info("Error (%d) when setting hw name", err);
+			return -EINVAL;
+		}
+	}
+
+	/* Get hw-N node (N is hwid)
+	 * We distinguish current hw setting via hwid.
+	 */
+	err = cfm_dt_sku_hw_np_fetch(np, cfm->hwid, &hw_np);
+	if (err < 0) {
+		pr_info("cfm_dt_sku_hw_np_fetch failed");
+		err = -EINVAL;
+		goto dt_sku_err;
+	}
+
+	/* We have successfully fetched the hw-N node.
+	 * Moving forward, we will parse the FEM data with hw_np
+	 * and populate variables in struct connfem_sku.
+	*/
+	err = cfm_dt_sku_fem_data_hdl(hw_np, sku);
+	if (err < 0) {
+		pr_info("cfm_dt_sku_fem_data_hdl failed");
+		err = -EINVAL;
+		goto dt_sku_err;
+	}
+
+	cfm->available = true;
+
+	/* Parse layout-flag */
+	err = cfm_sku_prop_val_get(hw_np,
+				CFM_DT_PROP_LAYOUT_FLAG,
+				&sku->layout_flag);
+
+	if (err < 0) {
+		pr_info("[REMIND] Get value of '%s' failed",
+			CFM_DT_PROP_LAYOUT_FLAG);
+		sku->layout_flag = 0;
+	}
+
+	/* Parse layout */
+	err = cfm_dt_sku_layout_data_hdl(hw_np, sku);
+
+	if (err < 0) {
+		pr_info("cfm_dt_sku_layout_data_hdl failed");
+		err = -EINVAL;
+		goto dt_sku_err;
+	}
+
+	/* Parse spdt layout */
+	of_for_each_phandle(&it, lerr, hw_np,
+			CFM_DT_PROP_LAYOUT_SPDT, NULL, 0) {
+		if (lerr < 0) {
+			pr_info("%s[%d]: Invalid node at index %d",
+				CFM_DT_PROP_LAYOUT_SPDT,
+				i, i);
+			err = -EINVAL;
+			break;
+		}
+
+		err = cfm_sku_generic_layout_hdl(it.node,
+						&sku->spdt.pin_count,
+						sku->spdt.pinmap);
+
+		if (err < 0) {
+			pr_info("cfm_sku_generic_layout_hdl failed");
+			err = -EINVAL;
+			break;
+		}
+
+		i++;
+	}
+	of_node_put(it.node);
+
+	if (err < 0) {
+		pr_info("spdt layout parse failed");
+		goto dt_sku_err;
+	}
+
+	sku->spdt.magic_num = CONNFEM_SPDT_MAGIC_NUMBER;
+
+	/* Parse subsys flags nodes */
+	err = cfm_dt_epaelna_flags_parse(hw_np, CFM_DT_NODE_FLAGS, flags);
+
+	if (err < 0) {
+		pr_info("cfm_dt_epaelna_flags_parse failed");
+		err = -EINVAL;
+		goto dt_sku_err;
+	}
+
+	/* Populate subsys flags:
+	 * Here, we do not add a new function to deal with sku flags.
+	 * We reuse cfm_epaelna_flags_populate and populate data into
+	 * epaelna-related structure.
+	*/
+	err = cfm_epaelna_flags_populate(flags, flags_cfg);
+
+	if (err < 0) {
+		pr_info("cfm_epaelna_flags_populate failed");
+		err = -EINVAL;
+		goto dt_sku_err;
+	}
+
+	cfm_sku_data_dump(sku);
+
+	CFM_DT_PUT_NP(hw_np);
+	return 0;
+
+dt_sku_err:
+	CFM_DT_PUT_NP(hw_np);
+	cfm_dt_sku_data_reset(cfm);
+	return err;
+}
+
+
+/**
+ * cfm_dt_sku_hw_np_fetch
+ *	get hw-N node
+ *
+ * Parameters
+ *	np	: Pointer to the node containing the 'hw-' node.
+ *	hwid	: indicate which node we'll catch.
+ *
+ * Return value
+ *	0	: Success
+ *	-EINVAL	: Error
+ *
+ */
+static int cfm_dt_sku_hw_np_fetch(
+		struct device_node *np,	unsigned int hwid,
+		struct device_node **hw_np)
+{
+	int c = 0;
+	char name[sizeof(CFM_DT_NODE_HW_PREFIX) + 10 + 1];
+
+	if (!np || !hw_np) {
+		pr_info("No input node");
+		return -EINVAL;
+	}
+
+	c = snprintf(name, sizeof(name), "%s%u", CFM_DT_NODE_HW_PREFIX, hwid);
+
+	/* Error handling:
+	 * c == size is not correct since '\0' should be
+	 * taken into account.
+	 */
+	if (c < 0 || c >= sizeof(name)) {
+		pr_info("Concatenate name error %d, sz %u, '%s'%u'",
+			c,
+			(unsigned int) sizeof(name),
+			CFM_DT_NODE_HW_PREFIX,
+			hwid);
+		return -EINVAL;
+	}
+
+	*hw_np = of_get_child_by_name(np, name);
+	if (!(*hw_np)) {
+		pr_info("Cannot find node of name: %s", name);
+		return -ENOENT;
+	}
+
+	pr_info("Get node of name: %s", name);
+
+	return 0;
+}
+
+/**
+ * cfm_dt_sku_fem_data_hdl
+ * 	Parse information of a FEM, including:
+ * 	(1) FEM info
+ * 	(2) FEM truth table
+ * 	(3) FEM control pin
+ * 	(4) FEM truth table usage.
+ *
+ * Parameters
+ *	np	: Pointer to the node containing properties as
+ *		'using-fems', common node, wifi node, bt node.
+ *	sku	: It will be populated with fem data.
+ *
+ * Return value
+ *	0	: Success
+ *	-EINVAL	: Error
+ *
+ */
+static int cfm_dt_sku_fem_data_hdl(struct device_node *np,
+				struct connfem_sku *sku)
+{
+	int err = 0;
+	unsigned int i = 0;
+	struct device_node *tmp_np = NULL;
+
+	if(!np || !sku) {
+		pr_info("%s: input is NULL", __func__);
+		return -EINVAL;
+	}
+
+	err = of_property_count_u32_elems(np,
+					CFM_DT_PROP_USING_FEMS);
+
+	if (err <= 0) {
+		pr_info("Missing '%s' property",
+			CFM_DT_PROP_USING_FEMS);
+		return -EINVAL;
+	}
+
+	sku->fem_count = (unsigned int)err;
+
+	if (sku->fem_count > CONNFEM_SKU_FEM_COUNT) {
+		pr_info("FEM count '%d' over '%d' of '%s' property",
+			sku->fem_count,
+			CONNFEM_SKU_FEM_COUNT,
+			CFM_DT_PROP_USING_FEMS);
+		return -EINVAL;
+	}
+
+	/* Per FEM data parsing	*/
+	for (i = 0; i < sku->fem_count; i++) {
+		sku->fem[i].magic_num = CONNFEM_FEM_MAGIC_NUMBER;
+		tmp_np = of_parse_phandle(np, CFM_DT_PROP_USING_FEMS, i);
+
+		if (!tmp_np) {
+			pr_info("%s[%d]: Invalid node at index %d",
+				CFM_DT_PROP_USING_FEMS,
+				i, i);
+			return -EINVAL;
+		}
+
+		err = cfm_sku_fem_info_populate(tmp_np,
+						&sku->fem[i].info);
+		if (err < 0) {
+			pr_info("cfm_sku_fem_info_populate failed");
+			err = -EINVAL;
+			goto dt_sku_fem_data_hdl;
+		}
+
+		err = cfm_sku_fem_ctrl_pin_populate(tmp_np,
+						&sku->fem[i].ctrl_pin);
+		if (err < 0) {
+			pr_info("cfm_sku_fem_ctrl_pin_populate failed");
+			err = -EINVAL;
+			goto dt_sku_fem_data_hdl;
+		}
+
+		err = cfm_sku_fem_ttbl_populate(tmp_np,
+						&sku->fem[i].tt);
+		if (err < 0) {
+			pr_info("cfm_sku_fem_ttbl_populate failed");
+			err = -EINVAL;
+			goto dt_sku_fem_data_hdl;
+		}
+
+		CFM_DT_PUT_NP(tmp_np);
+	}
+
+	err = cfm_sku_ttbl_usg_hdl(np, sku);
+	if (err < 0) {
+		pr_info("cfm_sku_ttbl_usg_hdl failed");
+		err = -EINVAL;
+		goto dt_sku_fem_data_hdl;
+	}
+
+	/* Normal success procedure & error will reach here */
+dt_sku_fem_data_hdl:
+	CFM_DT_PUT_NP(tmp_np);
+	return err;
+}
+
+/**
+ * cfm_dt_sku_layout_data_hdl
+ * 	Parse information of a FEM layout
+ *
+ * Parameters
+ *	np	: Pointer to the node containing property
+ *		"layout".
+ *	connfem_sku: It will be populated with fem data.
+ *
+ * Return value
+ *	0	: Success
+ *	-EINVAL	: Error
+ *
+ */
+static int cfm_dt_sku_layout_data_hdl(struct device_node *np,
+				struct connfem_sku *cfm_sku)
+{
+	int err = 0, lerr = 0;
+	unsigned int bk_cnt = 0;
+	struct property *prop = NULL;
+	struct of_phandle_iterator it;
+
+	if(!np || !cfm_sku) {
+		pr_info("%s: input is NULL", __func__);
+		return -EINVAL;
+	}
+
+	bk_cnt = cfm_sku->layout_count;
+	prop = of_find_property(np, CFM_DT_PROP_LAYOUT, NULL);
+
+	if (!prop) {
+		pr_info("Property '%s' not found", CFM_DT_PROP_LAYOUT);
+		return -EINVAL;
+	}
+
+	of_for_each_phandle(&it, lerr, np, CFM_DT_PROP_LAYOUT, NULL, 0) {
+		if (lerr < 0) {
+			pr_info("%s: Invalid node at index %d",
+				CFM_DT_PROP_LAYOUT,
+				cfm_sku->layout_count);
+			err = -EINVAL;
+			break;
+		}
+
+		if (cfm_sku->layout_count >= CONNFEM_SKU_LAYOUT_COUNT) {
+			pr_info("Layout count '%d' over '%d'",
+				cfm_sku->layout_count,
+				CONNFEM_SKU_LAYOUT_COUNT);
+			err = -EINVAL;
+			break;
+		}
+
+		err = cfm_sku_fem_layout_populate(it.node, cfm_sku,
+				&cfm_sku->layout[cfm_sku->layout_count]);
+		if (err < 0) {
+			pr_info("cfm_sku_fem_layout_populate failed");
+			err = -EINVAL;
+			break;
+		}
+
+		cfm_sku->layout_count++;
+	}
+	of_node_put(it.node);
+
+	if (err < 0) {
+		cfm_sku->layout_count = bk_cnt;
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int cfm_dt_epaelna_flags_name_get(
+		unsigned int hwid,
+		size_t name_out_size,
+		char *name_out)
+{
+	int c;
+	char name[sizeof(CFM_DT_PROP_FLAGS_PREFIX) + 10 + 1];
+	size_t bytes_to_copy = 0;
+
+	/* Flags node name is based on hwid, it's the same for all subsys */
+	c = snprintf(name, sizeof(name),
+		 "%s%u",
+		 CFM_DT_PROP_FLAGS_PREFIX, hwid);
+	if (c < 0 || c >= sizeof(name)) {
+		pr_info("flag node name error %d, sz %u, '%s%u'",
+			c,
+			(unsigned int)sizeof(name),
+			CFM_DT_PROP_FLAGS_PREFIX,
+			hwid);
+		return -EINVAL;
+	}
+
+	/* Prevent OOB */
+	bytes_to_copy = sizeof(name) < name_out_size ?
+			sizeof(name) : name_out_size;
+
+	memcpy(name_out, name, bytes_to_copy);
+
+	return 0;
+}
+
+void cfm_dt_sku_data_reset(struct connfem_sku_context *cfm)
+{
+	if (!cfm) {
+		pr_info("Sku reset no input");
+		return;
+	}
+
+	cfm_epaelna_flags_free(cfm->flags_cfg);
+	cfm_dt_epaelna_flags_free(&cfm->flags);
+
+	memset(&cfm->hwid, 0, sizeof(cfm->hwid));
+	memset(&cfm->available, 0, sizeof(cfm->available));
+	memset(&cfm->sku, 0, sizeof(cfm->sku));
+	memset(&cfm->flags, 0, sizeof(cfm->flags));
+	memset(cfm->flags_cfg, 0, sizeof(cfm->flags_cfg));
 }

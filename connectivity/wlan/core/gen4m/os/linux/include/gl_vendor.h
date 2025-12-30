@@ -701,6 +701,53 @@ extern const struct nla_policy nla_trx_stats_policy[
 
 extern const struct nla_policy mtk_usable_channel_policy[
 	WIFI_ATTRIBUTE_USABLE_CHANNEL_MAX + 1];
+
+enum WIFIBAND {
+	WIFIBAND_BAND_24GHZ = 1 << 0,
+	WIFIBAND_BAND_5GHZ  = 1 << 1,
+	WIFIBAND_BAND_6GHZ  = 1 << 2,
+};
+
+enum WIFIIFACE {
+	/**
+	 * Interface operation mode is client.
+	 */
+	IFACE_MODE_STA = 1 << 0,
+	/**
+	 * Interface operation mode is Hotspot.
+	 */
+	IFACE_MODE_SOFTAP = 1 << 1,
+	/**
+	 * Interface operation mode is Ad-Hoc network.
+	 */
+	IFACE_MODE_IBSS = 1 << 2,
+	/**
+	 * Interface operation mode is Wifi Direct Client.
+	 */
+	IFACE_MODE_P2P_CLIENT = 1 << 3,
+	/**
+	 * Interface operation mode is Wifi Direct Group Owner.
+	 */
+	IFACE_MODE_P2P_GO = 1 << 4,
+	/**
+	 * Interface operation mode is Aware.
+	 */
+	IFACE_MODE_NAN = 1 << 5,
+	/**
+	 * Interface operation mode is Mesh network.
+	 */
+	IFACE_MODE_MESH = 1 << 6,
+	/**
+	 * Interface operation mode is Tunneled Direct Link Setup.
+	 */
+	IFACE_MODE_TDLS = 1 << 7,
+};
+
+enum UsableChannelFilter {
+	CELLULAR_COEXISTENCE = (1 << 0) /* 1 */,
+	CONCURRENCY = (1 << 1) /* 2 */,
+	NAN_INSTANT_MODE = (1 << 2) /* 4 */,
+};
 /*******************************************************************************
  *                           MACROS
  *******************************************************************************

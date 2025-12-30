@@ -93,6 +93,12 @@
 	(IS_BSS_AIS(_bss_info) && \
 	(_bss_info->fgIsAisCsaPending || _bss_info->fgIsAisSwitchingChnl))
 
+#if (CFG_TC10_FEATURE == 1)
+#define RCPI_FOR_DONT_ROAM                  80 /*-70dbm*/
+#else
+#define RCPI_FOR_DONT_ROAM                  60 /*-80dbm*/
+#endif
+
 #define AIS_BTM_DIS_IMMI_TIMEOUT	    10000 /* MSEC */
 #define AIS_BTM_DIS_IMMI_STATE_0	    0
 #define AIS_BTM_DIS_IMMI_STATE_1	    1

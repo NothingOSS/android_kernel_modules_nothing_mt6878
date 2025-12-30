@@ -525,6 +525,14 @@ struct kbase_protected_suspend_buffer {
  *                           or it becomes unblocked during protected mode. The
  *                           flag helps Scheduler confirm if the group actually
  *                           became non idle or not.
+ * @idle_on_stop: True if the group was idle or blocked on SYNC_WAIT at
+ *                the time it was suspended/terminated. This is used to handle
+ *                a race condition where the group was idle at the time of
+ *                suspension request, but it became active again before the
+ *                suspension request completes. This causes the scheduler to
+ *                treat the group as though it was suspended because of
+ *                preemption.
+ *                This is only used by scheduler_group_schedule().
  * @bound_queues:   Array of registered queues bound to this queue group.
  * @doorbell_nr:    Index of the hardware doorbell page assigned to the
  *                  group.
@@ -581,6 +589,7 @@ struct kbase_queue_group {
 	bool faulted;
 	bool cs_unrecoverable;
 	bool reevaluate_idle_status;
+	bool idle_on_stop;
 
 	struct kbase_queue *bound_queues[MAX_SUPPORTED_STREAMS_PER_GROUP];
 

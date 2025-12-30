@@ -76,6 +76,9 @@ static struct proc_dir_entry *proc_root;
 #include <platform/mtk_platform_common/mtk_platform_irq_trace.h>
 #endif /* CONFIG_MALI_MTK_IRQ_TRACE */
 
+#include <linux/of_irq.h>
+extern void mt_irq_dump_status(unsigned int irq);
+
 static bool mfg_powered;
 static DEFINE_MUTEX(mfg_pm_lock);
 static DEFINE_MUTEX(common_debug_lock);
@@ -215,6 +218,9 @@ void mtk_common_debug(enum mtk_common_debug_types type, int pid, u64 hook_point)
 	}
 
 	switch (type) {
+	case MTK_COMMON_DBG_DUMP_GIC_STATUS:
+		mtk_debug_dump_gic_status(kbdev);
+		break;
 	case MTK_COMMON_DBG_DUMP_INFRA_STATUS:
 		mtk_common_gpufreq_dump_infra_status(kbdev);
 		break;
@@ -324,6 +330,21 @@ void mtk_common_gpufreq_dump_infra_status(struct kbase_device *kbdev)
 #else
 		mt_gpufreq_dump_infra_status();
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
+	}
+}
+
+void mtk_debug_dump_gic_status(struct kbase_device *kbdev)
+{
+	int i = 0;
+	unsigned int irq = 0;
+	if(kbdev && kbdev->dev && kbdev->dev->of_node) {
+		/* Dump gic information */
+		for (i = 0; i < 3; i++) {
+			/* 0: GPU, 1: MMU, 2: JOB */
+			irq = irq_of_parse_and_map(kbdev->dev->of_node, i);
+			if (irq)
+				mt_irq_dump_status(irq);
+		}
 	}
 }
 

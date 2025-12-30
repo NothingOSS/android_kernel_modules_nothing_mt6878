@@ -183,6 +183,15 @@ void gps_dl_hw_dep_common_clear_wakeup_source(void)
 	GDL_HW_SET_CONN_INFRA_ENTRY(CONN_CFG_ON_CSR_GPS_ON_IRQ_STATUS_CONN_GPS_HOST_CLR_FW_OWN_STS, 1);
 }
 
+void gps_dl_hw_dep_common_dump_after_exit_dpstop_dsleep(void)
+{
+	/*no need in v060 project*/
+}
+
+void gps_dl_hw_dep_common_dump_before_enter_dpstop_dsleep(void)
+{
+	/*no need in v060 project*/
+}
 
 void gps_dl_hw_dep_cfg_dsp_mem(enum dsp_ctrl_enum ctrl)
 {
