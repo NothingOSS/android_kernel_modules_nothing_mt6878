@@ -1300,7 +1300,7 @@ uint32_t filsDecryptAssocResp(struct ADAPTER *ad, struct SW_RFB *rfb,
 	size_t aad_len[5];
 	struct WLAN_ASSOC_RSP_FRAME *mgmt;
 
-	end = (uint8_t *)rfb->pvHeader + rfb->u2PacketLen;
+	pos = end = (uint8_t *)rfb->pvHeader + rfb->u2PacketLen;
 	crypt_len = filsFindIeAfterSession(ad,
 		rfb->pvHeader, rfb->u2PacketLen, &pos);
 
@@ -1791,6 +1791,9 @@ uint32_t filsInstallIGTK(struct ADAPTER *ad, struct STA_RECORD *sta)
 		DBGLOG(FILS, ERROR, "wrong keyidx=%d\n", keyidx);
 		return WLAN_STATUS_FAILURE;
 	}
+
+	if (!bss)
+		return WLAN_STATUS_FAILURE;
 
 	if (bss->filskeyUsed[keyidx]) {
 		DBGLOG(FILS, WARN, "Bss%d key %d not cleard\n",	bssidx, keyidx);

@@ -255,8 +255,12 @@ int gps_dl_hal_link_power_ctrl_inner(enum gps_dl_link_id_enum link_id,
 		 */
 		gps_dl_set_res_enable(link_id, GPS_DUAL_SET_HW_WAKEUP_SRC, true, false);
 		gps_dl_set_res_enable(link_id, GPS_DUAL_SET_HW_WAKEUP_SRC, false, false);
+		/* l1/l5 both exit dpstop mode, exec gps_dl_hw_common_dump_after_exit_dpstop_dpsleep */
+		gps_dl_set_res_enable(link_id, GPS_DUAL_DUMP_BGF_CR_BEFORE_ENTER_DPSTOP_DPSLEEP, false, false);
 		return 0;
 	} else if (2 == op || 4 == op) {
+		/* before entering dpstop mode for 1st time, exec gps_dl_hw_common_dump_before_enter_dpstop_dpsleep */
+		gps_dl_set_res_enable(link_id, GPS_DUAL_DUMP_BGF_CR_BEFORE_ENTER_DPSTOP_DPSLEEP, true, false);
 		if (GPS_DATA_LINK_ID0 == link_id) {
 			if (2 == op)
 				g_gps_dsp_off_ret_array[link_id] = gps_dl_hw_gps_dsp_ctrl(GPS_L1_DSP_ENTER_DSLEEP);
@@ -820,6 +824,16 @@ void gps_dl_set_res_enable(enum gps_dl_link_id_enum link_id, enum gps_dl_hal_pow
 		} else {
 			/* clear when both clear*/
 			gps_dl_hw_common_clear_wakeup_source();
+		}
+		break;
+
+	case GPS_DUAL_DUMP_BGF_CR_BEFORE_ENTER_DPSTOP_DPSLEEP:
+		if (enable_new) {
+			/* dump before exting dpstop mode*/
+			gps_dl_hw_common_dump_before_enter_dpstop_dpsleep();
+		} else {
+			/* dump after entering dpstop mode*/
+			gps_dl_hw_common_dump_after_exit_dpstop_dpsleep();
 		}
 		break;
 

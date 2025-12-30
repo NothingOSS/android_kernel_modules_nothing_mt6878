@@ -2330,6 +2330,40 @@ static void kcpu_queue_timeout_worker(struct work_struct *data)
 	struct kbase_kcpu_command_queue *queue =
 		container_of(data, struct kbase_kcpu_command_queue, timeout_work);
 
+#if IS_ENABLED(CONFIG_MALI_MTK_FENCE_DEBUG)
+	struct task_struct *task;
+	struct pid *pid_struct;
+	bool if_pending_freezing = false;
+
+	/* Prevent monitor fence when process in the zombie, dead or frozen state */
+	pid_struct = find_get_pid(queue->kctx->tgid);
+	if (pid_struct) {
+		rcu_read_lock();
+		task = pid_task(pid_struct, PIDTYPE_PID);
+		if (task) {
+			if_pending_freezing = freezing(task);
+			if ((task->exit_state == EXIT_ZOMBIE) || (task->exit_state == EXIT_DEAD) ||
+				(task->__state & TASK_FROZEN) || if_pending_freezing) {
+				dev_info(queue->kctx->kbdev->dev,
+					"[%d_%d] Bypass fence monitor, process is in unexpected state:0x%llx, exit_state:0x%llx, freezing:%d",
+					queue->kctx->tgid, queue->kctx->id, (unsigned long long) task->__state,
+					(unsigned long long) task->exit_state, if_pending_freezing);
+#if IS_ENABLED(CONFIG_MALI_MTK_LOG_BUFFER)
+				mtk_logbuffer_type_print(queue->kctx->kbdev, MTK_LOGBUFFER_TYPE_CRITICAL | MTK_LOGBUFFER_TYPE_EXCEPTION,
+					"[%d_%d] Bypass fence monitor, process is in unexpected state:0x%llx, exit_state:0x%llx, freezing:%d\n",
+					queue->kctx->tgid, queue->kctx->id, (unsigned long long) task->__state,
+					(unsigned long long) task->exit_state, if_pending_freezing);
+#endif /* CONFIG_MALI_MTK_LOG_BUFFER */
+				rcu_read_unlock();
+				put_pid(pid_struct);
+				return;
+			}
+		}
+		rcu_read_unlock();
+		put_pid(pid_struct);
+	}
+#endif /* CONFIG_MALI_MTK_FENCE_DEBUG */
+
 	kcpu_queue_dump(queue);
 
 	kcpu_queue_force_fence_signal(queue);

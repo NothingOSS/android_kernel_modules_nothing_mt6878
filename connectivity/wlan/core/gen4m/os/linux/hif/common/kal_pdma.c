@@ -1306,7 +1306,7 @@ static bool kalWaitRxDmaDone(struct GLUE_INFO *prGlueInfo,
 	uint32_t u4Size = 0;
 
 #if CFG_MTK_WIFI_WFDMA_WB
-	if (prRxRing->fgEnEmiIdx)
+	if (!prGlueInfo->fgIsEnableMon && prRxRing->fgEnEmiIdx)
 		return true;
 #endif /* CFG_ENABLE_MAWD_MD_RING */
 
@@ -2104,7 +2104,7 @@ end:
 #endif /* !CFG_SUPPORT_RX_WORK */
 
 #if (CFG_SUPPORT_TX_DATA_DELAY == 1)
-	del_timer_sync(&prHifInfo->rTxDelayTimer);
+	hrtimer_cancel(&prHifInfo->rTxDelayTimer);
 	KAL_CLR_BIT(HIF_TX_DATA_DELAY_TIMER_RUNNING_BIT,
 		    prHifInfo->ulTxDataTimeout);
 #endif
@@ -2317,6 +2317,200 @@ static bool kalDevKickAmsduData(struct GLUE_INFO *prGlueInfo,
 	return fgRet;
 }
 
+static void kalDevDebugSegment(struct ADAPTER *ad, struct SW_RFB *prSwRfb,
+	enum ENUM_RX_SEGMENT_TYPE eType, uint32_t u4Len)
+{
+	struct WIFI_VAR *prWifiVar = &ad->rWifiVar;
+#if CFG_DEBUG_RX_SEGMENT
+	OS_SYSTIME now, last;
+#endif /* CFG_DEBUG_RX_SEGMENT */
+	void *pvPayload;
+
+	if (eType == RX_SEGMENT_NONE)
+		return;
+
+	/* fgDumpRxDsegment always TRUE when CFG_DEBUG_RX_SEGMENT is enabled */
+	if (!prWifiVar->fgDumpRxDsegment)
+		return;
+
+#if CFG_DEBUG_RX_SEGMENT
+	/* only dump one of them before timeout (default: 10s) */
+	GET_BOOT_SYSTIME(&now);
+	last = ad->rLastRxSegmentTime;
+
+	if (eType == RX_SEGMENT_FIRST &&
+		CHECK_FOR_TIMEOUT(now, last,
+			SEC_TO_SYSTIME(prWifiVar->u4RxSegmentDebugTimeout)))
+		ad->fgDumpRxSegment = TRUE;
+
+	if (!ad->fgDumpRxSegment)
+		return;
+
+	ad->rLastRxSegmentTime = now;
+#endif /* CFG_DEBUG_RX_SEGMENT */
+
+	/* only first segment has rxd */
+	if (eType == RX_SEGMENT_FIRST) {
+		nicRxFillRFB(ad, prSwRfb);
+
+		pvPayload = prSwRfb->pvHeader;
+		/* use payload length in rxd instead */
+		u4Len = prSwRfb->u2PacketLen;
+
+		DBGLOG(HAL, INFO, "Dump RXD:\n");
+		DBGLOG_MEM8(HAL, INFO, prSwRfb->prRxStatus,
+			ad->chip_info->rxd_size);
+	} else
+		pvPayload = prSwRfb->pucRecvBuff;
+
+	/* boundary protection */
+	if (u4Len >= CFG_RX_MAX_PKT_SIZE)
+		u4Len = CFG_RX_MAX_PKT_SIZE;
+
+	DBGLOG(HAL, INFO, "Dump RXP:\n");
+	DBGLOG_MEM8(HAL, INFO, pvPayload, u4Len);
+
+#if CFG_DEBUG_RX_SEGMENT
+	if (eType == RX_SEGMENT_LAST) {
+		ad->fgDumpRxSegment = FALSE;
+	}
+#endif /* CFG_DEBUG_RX_SEGMENT */
+}
+
+#if (CFG_SUPPORT_PDMA_SCATTER == 1)
+static u_int8_t kalDevPdmaScatterAlloc(struct GLUE_INFO *pr,
+	struct RTMP_RX_RING *prRxRing, uint16_t u2Port, uint32_t u4StartIdx)
+{
+	struct ADAPTER *ad = pr->prAdapter;
+	struct RTMP_DMACB *pRxCell;
+	struct RXD_STRUCT *pRxD;
+	uint32_t u4CurrIdx;
+	uint8_t ucScatterCnt = 0;
+	uint8_t *pucRecvBuff;
+
+	u4CurrIdx = u4StartIdx;
+	do {
+		pRxCell = &prRxRing->Cell[u4CurrIdx];
+		pRxD = (struct RXD_STRUCT *)pRxCell->AllocVa;
+
+		/* need to wait until WFDMA is ready */
+		if (!kalWaitRxDmaDone(pr, prRxRing, pRxD, u2Port))
+			return FALSE;
+
+		ucScatterCnt++;
+
+		if (pRxD->LastSec0 == 1)
+			break;
+
+		INC_RING_INDEX(u4CurrIdx, prRxRing->u4RingSize);
+	} while (TRUE);
+
+	/* Avoid memory leakage */
+	if (prRxRing->pvSegPkt) {
+		DBGLOG(HAL, WARN,
+			"pvPacket[%p] not NULL [%u:%u:%u:%u]\n",
+			prRxRing->pvSegPkt,
+			prRxRing->u4SegPktLenMax, prRxRing->u4SegPktLen,
+			prRxRing->u4SegPktIdxMax, prRxRing->u4SegPktIdx);
+		kalPacketFree(pr, prRxRing->pvSegPkt);
+	}
+
+	prRxRing->u4SegPktIdx = 0;
+	prRxRing->u4SegPktIdxMax = ucScatterCnt;
+	prRxRing->u4SegPktLen = 0;
+	prRxRing->u4SegPktLenMax = ucScatterCnt * CFG_RX_MAX_MPDU_SIZE;
+	prRxRing->pvSegPkt = kalPacketAlloc(pr, prRxRing->u4SegPktLenMax,
+				FALSE, &pucRecvBuff);
+
+	RX_ADD_CNT(&ad->rRxCtrl, RX_PDMA_SCATTER_DATA_COUNT, ucScatterCnt);
+
+	return TRUE;
+}
+
+static u_int8_t kalDevPdmaScatterCheck(struct GLUE_INFO *pr,
+	struct RTMP_RX_RING *prRxRing)
+{
+	struct ADAPTER *ad = pr->prAdapter;
+	struct RX_DESC_OPS_T *prRxDescOps;
+	uint8_t *pucRecvBuff;
+	void *prRxStatus;
+	uint16_t u2RxByteCount;
+
+	prRxDescOps = ad->chip_info->prRxDescOps;
+	if (!prRxRing->pvSegPkt)
+		goto end;
+
+	pucRecvBuff = ((struct sk_buff *)prRxRing->pvSegPkt)->data;
+	prRxStatus = pucRecvBuff;
+
+	/* RxByteCount = sizeof(RXD) + sizeof(Payload) */
+	u2RxByteCount = prRxDescOps->nic_rxd_get_rx_byte_count(prRxStatus);
+	if (u2RxByteCount <= prRxRing->u4SegPktLenMax)
+		return TRUE;
+
+	DBGLOG(HAL, ERROR,
+		"Error Detected. PacketIdx[%u/%u] PacketLen[%u/%u] RxByteCnt[%u]\n",
+		prRxRing->u4SegPktIdx, prRxRing->u4SegPktIdxMax,
+		prRxRing->u4SegPktLen, prRxRing->u4SegPktLenMax,
+		u2RxByteCount);
+	DBGLOG(HAL, ERROR, "Dump RXD and Payload:\n");
+	DBGLOG_MEM8(HAL, ERROR, pucRecvBuff, prRxRing->u4SegPktLenMax);
+
+	kalPacketFree(pr, prRxRing->pvSegPkt);
+	prRxRing->pvSegPkt = NULL;
+end:
+	return FALSE;
+}
+
+static u_int8_t kalDevPdmaScatterCopy(struct GLUE_INFO *pr,
+	struct RTMP_RX_RING *prRxRing, struct SW_RFB *prSwRfb,
+	enum ENUM_RX_SEGMENT_TYPE eType, uint32_t u4Len)
+{
+	struct ADAPTER *ad = pr->prAdapter;
+	uint8_t *pucRecvBuff;
+
+	if (!prRxRing->pvSegPkt)
+		goto end;
+
+	/* boundary protection */
+	if (u4Len >= CFG_RX_MAX_PKT_SIZE)
+		u4Len = CFG_RX_MAX_PKT_SIZE;
+
+	if ((++prRxRing->u4SegPktIdx > prRxRing->u4SegPktIdxMax)
+		|| u4Len > (prRxRing->u4SegPktLenMax - prRxRing->u4SegPktLen)) {
+		DBGLOG(HAL, ERROR,
+			"eType[%u] PacketIdx[%u/%u] PacketLen[%u/%u/%u]\n",
+			eType, u4Len,
+			prRxRing->u4SegPktIdx, prRxRing->u4SegPktIdxMax,
+			u4Len, prRxRing->u4SegPktLen, prRxRing->u4SegPktLenMax);
+		goto end;
+	}
+
+	/* copy current segment to buffer of pdma scatter */
+	pucRecvBuff = ((struct sk_buff *)prRxRing->pvSegPkt)->data;
+	pucRecvBuff += prRxRing->u4SegPktLen;
+	kalMemCopy(pucRecvBuff, prSwRfb->pucRecvBuff, u4Len);
+	prRxRing->u4SegPktLen += u4Len;
+
+	if (eType == RX_SEGMENT_LAST) {
+		if (!kalDevPdmaScatterCheck(pr, prRxRing))
+			goto end;
+
+		RX_INC_CNT(&ad->rRxCtrl, RX_PDMA_SCATTER_INDICATION_COUNT);
+		kalPacketFree(pr, prSwRfb->pvPacket);
+		prSwRfb->pvPacket = prRxRing->pvSegPkt;
+		prSwRfb->pucRecvBuff =
+			((struct sk_buff *)prSwRfb->pvPacket)->data;
+		prSwRfb->prRxStatus = (void *)prSwRfb->pucRecvBuff;
+		prRxRing->pvSegPkt = NULL;
+		return TRUE;
+	}
+
+end:
+	return FALSE;
+}
+#endif /* CFG_SUPPORT_PDMA_SCATTER */
+
 bool kalDevReadData(struct GLUE_INFO *prGlueInfo, uint16_t u2Port,
 		    struct SW_RFB *prSwRfb)
 {
@@ -2329,15 +2523,8 @@ bool kalDevReadData(struct GLUE_INFO *prGlueInfo, uint16_t u2Port,
 	struct RTMP_DMABUF *prDmaBuf;
 	u_int8_t fgRet = TRUE;
 	uint32_t u4CpuIdx = 0;
-#ifdef CFG_SUPPORT_PDMA_SCATTER
-	struct RTMP_DMACB *pRxCellScatter;
-	struct RXD_STRUCT *pRxDScatter;
-	uint32_t u4CpuIdxScatter = 0;
-	uint8_t ucScatterCnt = 0;
-	uint8_t *pucRecvBuff;
-#endif
-	u_int8_t fgSkip = FALSE;
-	u_int8_t fgSegmentFirst = FALSE;
+	enum ENUM_RX_SEGMENT_TYPE eType = RX_SEGMENT_NONE;
+	u_int8_t fgDebugSegment = FALSE;
 
 	ASSERT(prGlueInfo);
 
@@ -2368,65 +2555,53 @@ bool kalDevReadData(struct GLUE_INFO *prGlueInfo, uint16_t u2Port,
 #endif
 
 	if (pRxD->LastSec0 == 0 || prRxRing->fgRxSegPkt) {
+		/*
+		 * We should not return data when it is segmented unless the
+		 * last segment is received
+		 */
+		fgRet = FALSE;
+
 		/* Rx segmented packet */
 		if (!prGlueInfo->fgIsEnableMon) {
 			DBGLOG(HAL, WARN,
-				"Skip Rx segmented data packet, SDL0[%u] LS0[%u] Mo[%u]\n",
+				"Skip Segmented Data, Port[%u] SDL0[%u] LS0[%u] Mo[%u]\n",
+				u2Port,
 				pRxD->SDLen0, pRxD->LastSec0,
 				prGlueInfo->fgIsEnableMon);
+			fgDebugSegment = TRUE;
 		}
 
-		if (prAdapter->rWifiVar.fgDumpRxDsegment &&
-		    prRxRing->fgRxSegPkt == FALSE)
-			fgSegmentFirst = TRUE;
-
-#ifdef CFG_SUPPORT_PDMA_SCATTER
-		if (prGlueInfo->fgIsEnableMon &&
-			prRxRing->fgRxSegPkt == FALSE) {
-			u4CpuIdxScatter = u4CpuIdx;
-			do {
-				pRxCellScatter = &prRxRing->Cell[u4CpuIdxScatter];
-				pRxDScatter = (struct RXD_STRUCT *)pRxCellScatter->AllocVa;
-				ucScatterCnt++;
-
-				if (pRxDScatter->LastSec0 == 1)
-					break;
-
-				INC_RING_INDEX(u4CpuIdxScatter, prRxRing->u4RingSize);
-			} while (TRUE);
-
-			prRxRing->pvPacket = kalPacketAlloc(
-				prGlueInfo,
-				(ucScatterCnt * CFG_RX_MAX_MPDU_SIZE),
-				FALSE, &pucRecvBuff);
-			prRxRing->u4PacketLen = 0;
-
-			RX_ADD_CNT(&prAdapter->rRxCtrl,
-				RX_PDMA_SCATTER_DATA_COUNT, ucScatterCnt);
-		}
-#endif
-		if (pRxD->LastSec0 == 1) {
-			/* Last segmented packet */
-			prRxRing->fgRxSegPkt = FALSE;
-		} else {
-			/* Segmented packet */
+		if (pRxD->LastSec0 == 0 && prRxRing->fgRxSegPkt == FALSE) {
+			/* First segmented packet */
+			eType = RX_SEGMENT_FIRST;
 			prRxRing->fgRxSegPkt = TRUE;
-		}
+		} else if (pRxD->LastSec0 == 1) {
+			/* Last segmented packet */
+			eType = RX_SEGMENT_LAST;
+			prRxRing->fgRxSegPkt = FALSE;
+		} else
+			eType = RX_SEGMENT_MIDDLE;
 
-		fgRet = false;
-#ifdef CFG_SUPPORT_PDMA_SCATTER
-		if (prRxRing->pvPacket == NULL)
+#if (CFG_SUPPORT_PDMA_SCATTER == 1)
+		/*
+		 * only alloc packet when it is the first segment
+		 * Note: need to wait until all segment ready
+		 */
+		if (prGlueInfo->fgIsEnableMon && eType == RX_SEGMENT_FIRST) {
+			if (!kalDevPdmaScatterAlloc(prGlueInfo, prRxRing,
+				u2Port, u4CpuIdx))
+				return false;
+		}
 #endif
-			if (prAdapter->rWifiVar.fgDumpRxDsegment)
-				fgSkip = TRUE;
-			else
-				goto skip;
 	}
 
 	prDmaBuf = &pRxCell->DmaBuf;
 
 	if (prMemOps->copyRxData &&
 	    !prMemOps->copyRxData(prHifInfo, pRxCell, prDmaBuf, prSwRfb)) {
+		/* If it encounter copy Rx data Fail, it will trigger EE */
+		GL_USER_DEFINE_RESET_TRIGGER(prAdapter,
+			RST_WFDMA_MAP_FAIL, RST_FLAG_WF_RESET);
 		fgRet = false;
 		goto skip;
 	}
@@ -2441,29 +2616,6 @@ bool kalDevReadData(struct GLUE_INFO *prGlueInfo, uint16_t u2Port,
 	NIC_DUMP_RXDMAD_HEADER(prAdapter, "Dump RXDMAD:\n");
 	NIC_DUMP_RXDMAD(prAdapter, (uint8_t *)pRxD, sizeof(struct RXD_STRUCT));
 
-	/* dump rxd for large pkt */
-	if (!prGlueInfo->fgIsEnableMon &&
-		prAdapter->rWifiVar.fgDumpRxDsegment && fgSkip) {
-		void *pvPayload = prSwRfb->pucRecvBuff;
-		uint32_t u4PayloadLen = pRxD->SDLen0;
-
-		/* only first segment has rxd */
-		if (fgSegmentFirst) {
-			nicRxFillRFB(prAdapter, prSwRfb);
-
-			pvPayload = prSwRfb->pvHeader;
-			u4PayloadLen = prSwRfb->u2PacketLen;
-
-			NIC_DUMP_ICV_RXD(prAdapter, prSwRfb->prRxStatus);
-		}
-
-		u4PayloadLen = u4PayloadLen < CFG_RX_MAX_PKT_SIZE ?
-				u4PayloadLen : CFG_RX_MAX_PKT_SIZE;
-		/* dump payload */
-		NIC_DUMP_ICV_RXP(pvPayload, u4PayloadLen);
-		goto skip;
-	}
-
 	pRxD->SDPtr0 = (uint64_t)prDmaBuf->AllocPa & DMA_LOWER_32BITS_MASK;
 #ifdef CONFIG_PHYS_ADDR_T_64BIT
 	pRxD->SDPtr1 = ((uint64_t)prDmaBuf->AllocPa >>
@@ -2472,24 +2624,15 @@ bool kalDevReadData(struct GLUE_INFO *prGlueInfo, uint16_t u2Port,
 	pRxD->SDPtr1 = 0;
 #endif
 
-#ifdef CFG_SUPPORT_PDMA_SCATTER
-	if (prGlueInfo->fgIsEnableMon && fgRet == FALSE) {
-		pucRecvBuff = ((struct sk_buff *)prRxRing->pvPacket)->data;
-		pucRecvBuff += prRxRing->u4PacketLen;
-		kalMemCopy(pucRecvBuff, prSwRfb->pucRecvBuff, pRxD->SDLen0);
-		prRxRing->u4PacketLen += pRxD->SDLen0;
+	if (fgDebugSegment) {
+		kalDevDebugSegment(prAdapter, prSwRfb, eType, pRxD->SDLen0);
+		goto skip;
+	}
 
-		if (prRxRing->fgRxSegPkt == FALSE) {
-			RX_INC_CNT(&prAdapter->rRxCtrl,
-				RX_PDMA_SCATTER_INDICATION_COUNT);
-			kalPacketFree(prGlueInfo, prSwRfb->pvPacket);
-			prSwRfb->pvPacket = prRxRing->pvPacket;
-			prSwRfb->pucRecvBuff =
-				((struct sk_buff *)prSwRfb->pvPacket)->data;
-			prSwRfb->prRxStatus = (void *)prSwRfb->pucRecvBuff;
-			prRxRing->pvPacket = NULL;
-			fgRet = TRUE;
-		}
+#if (CFG_SUPPORT_PDMA_SCATTER == 1)
+	if (prGlueInfo->fgIsEnableMon && fgRet == FALSE) {
+		fgRet = kalDevPdmaScatterCopy(prGlueInfo, prRxRing, prSwRfb,
+				eType, pRxD->SDLen0);
 	}
 #endif
 skip:

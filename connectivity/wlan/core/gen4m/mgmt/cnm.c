@@ -1456,18 +1456,21 @@ void cnmIdcDetectHandler(struct ADAPTER *prAdapter,
 	uint8_t ucColdDownTime = 0;
 	struct WIFI_VAR *prWifiVar =
 		(struct WIFI_VAR *)NULL;
-#if CFG_TC10_FEATURE
 	struct BSS_INFO *prBssInfo;
+#if CFG_TC10_FEATURE
 	struct P2P_ROLE_FSM_INFO *prP2pRoleFsmInfo;
 #endif
 
-#if CFG_TC10_FEATURE
+
 	prBssInfo = cnmGetSapBssInfo(prAdapter);
-	if (!prBssInfo) {
+	if (!prBssInfo ||
+		kalP2pIsStoppingAp(prAdapter,
+		prBssInfo)) {
 		DBGLOG(CNM, WARN,
 			"[CSA]SoftAp Not Exist\n");
 		return;
 	}
+#if CFG_TC10_FEATURE
 	prP2pRoleFsmInfo = P2P_ROLE_INDEX_2_ROLE_FSM_INFO(prAdapter,
 		prBssInfo->u4PrivateData);
 	if (!prP2pRoleFsmInfo) {

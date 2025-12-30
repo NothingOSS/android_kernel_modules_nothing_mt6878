@@ -990,6 +990,12 @@ else
     ccflags-y += -DCFG_SUPPORT_DUAL_WTBL_GTK_REKEY_OFFLOAD=0
 endif
 
+ifeq ($(CONFIG_REKEY_OFFLOAD), n)
+    ccflags-y += -DCFG_REKEY_OFFLOAD=0
+else
+    ccflags-y += -DCFG_REKEY_OFFLOAD=1
+endif
+
 ifeq ($(CONFIG_SUPPORT_KERNEL_MAPPING_TXQ), y)
     ccflags-y += -DCFG_KERNEL_MAPPING_TXQ=1
 else
@@ -1185,7 +1191,9 @@ endif
 
 ifeq ($(CONFIG_SNIFFER_RADIOTAP), y)
     ccflags-y += -DCFG_SUPPORT_SNIFFER_RADIOTAP
-    ccflags-y += -DCFG_SUPPORT_PDMA_SCATTER
+    ccflags-y += -DCFG_SUPPORT_PDMA_SCATTER=1
+else
+    ccflags-y += -DCFG_SUPPORT_PDMA_SCATTER=0
 endif
 
 ifneq ($(filter 6765, $(WLAN_CHIP_ID)),)
@@ -1217,6 +1225,7 @@ ifeq ($(MTK_ANDROID_WMT), y)
     CONFIG_QUEUE_RX_IF_CONN_NOT_READY=y
     CONFIG_RFB_TRACK=y
     CONFIG_FIX_INCONSISTENT_RFB_POINTER=y
+    CONFIG_DEBUG_RX_SEGMENT=y
     ifeq ($(CONFIG_MTK_COMBO_WIFI_HIF), pcie)
     ifeq ($(CONFIG_DRV_OWN_INT_MODE),y)
         ccflags-y += -DCFG_MTK_WIFI_DRV_OWN_INT_MODE=1
@@ -1855,13 +1864,19 @@ else
 ccflags-y += -DCFG_MTK_CCCI_SUPPORT=0
 endif
 
-ifeq ($(CONFIG_MTK_WIFI_MDDP_SUPPORT), y)
+
+ifeq ($(CONFIG_MTK_MDDP_SUPPORT), n)
+ccflags-y += -DCFG_MTK_MDDP_SUPPORT=0
+else ifeq ($(CONFIG_MTK_WIFI_MDDP_SUPPORT), y)
 CONFIG_MTK_MDDP_SUPPORT := y
 else ifeq ($(CONFIG_MTK_WIFI_MDDP_SUPPORT), n)
 CONFIG_MTK_MDDP_SUPPORT :=
 endif
 
-ifneq ($(CONFIG_MTK_MDDP_SUPPORT),)
+
+ifeq ($(CONFIG_MTK_MDDP_SUPPORT), n)
+ccflags-y += -DCFG_MTK_MDDP_SUPPORT=0
+else ifneq ($(CONFIG_MTK_MDDP_SUPPORT),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mddp/include/
 ccflags-y += -DCFG_MTK_MDDP_SUPPORT=1
 else
@@ -2021,6 +2036,12 @@ endif
 
 ifeq ($(CONFIG_FIX_INCONSISTENT_RFB_POINTER), y)
 ccflags-y += -DCFG_FIX_INCONSISTENT_RFB_POINTER=1
+endif
+
+ifeq ($(CONFIG_DEBUG_RX_SEGMENT), y)
+    ccflags-y += -DCFG_DEBUG_RX_SEGMENT=1
+else
+    ccflags-y += -DCFG_DEBUG_RX_SEGMENT=0
 endif
 
 ifeq ($(CONFIG_PERF_MON_FAST), y)

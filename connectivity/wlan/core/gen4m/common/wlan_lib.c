@@ -7824,7 +7824,7 @@ void wlanInitFeatureOptionImpl(struct ADAPTER *prAdapter, uint8_t *pucKey)
 	INIT_UINT(prWifiVar->fgDisAgingLostDetection,
 		"DisAgingLostDetection", 0);
 	INIT_UINT(prWifiVar->fgDisRoaming, "DisRoaming", 0);
-	INIT_UINT(prWifiVar->fgDisGTKCipherCheck, "DisGTKCipherCheck", 0);
+	INIT_UINT(prWifiVar->fgDisGTKCipherCheck, "DisGTKCipherCheck", 1);
 	INIT_UINT(prWifiVar->fgDisSecurityCheck, "DisSecurityCheck", 0);
 	INIT_UINT(prWifiVar->u4RejectBtmReqReason, "RejectBtmReqReason", 0);
 	INIT_UINT(prWifiVar->fgRoamByBTO, "RoamByBTO", 0);
@@ -8037,7 +8037,21 @@ void wlanInitFeatureOptionImpl(struct ADAPTER *prAdapter, uint8_t *pucKey)
 	 * TXP_FULL(0x08),       TXP(0x04), TXDMAD(0x02), TXD(0x01),
 	 * RXEvent(0x80), RXDSEGMENT(0x40), RXDMAD(0x20), RXD(0x10).
 	 */
-	INIT_UINT(prWifiVar->u4TxRxDescDump, "TRXDescDump", 0x40);
+	INIT_UINT(prWifiVar->u4TxRxDescDump, "TRXDescDump", 0x0);
+
+#if CFG_DEBUG_RX_SEGMENT
+	INIT_UINT(prWifiVar->fgRxSegmentDebugEn, "RxSegmentDebugEn",
+		FEATURE_ENABLED);
+
+	INIT_UINT(prWifiVar->u4RxSegmentDebugTimeout,
+		"RxSegmentDebugTimeout", RX_SEGMENT_DEBUG_TIMEOUT);
+
+	if (IS_FEATURE_ENABLED(prWifiVar->fgRxSegmentDebugEn)) {
+		/* force enable it for better debugging */
+		prWifiVar->fgDumpRxDsegment = 0x1;
+		DBGLOG(INIT, TRACE, "Force Enable fgDumpRxDsegment\n");
+	}
+#endif /* CFG_DEBUG_RX_SEGMENT */
 
 	DBGLOG(INIT, TRACE,
 		"TxPfull,TxP,TxDmad,TxD/RxDsegment,RxDmad,RxD,RxEvt=%u,%u,%u,%u/%u,%u,%u,%u",
@@ -9620,7 +9634,8 @@ uint32_t wlanCfgParseToFW(int8_t **args, int8_t *args_size,
  * @return none
  */
 /*----------------------------------------------------------------------------*/
-void wlanFeatureToFw(struct ADAPTER *prAdapter, uint32_t u4Flag)
+void wlanFeatureToFw(struct ADAPTER *prAdapter, uint32_t u4Flag,
+	uint8_t *pucKey)
 {
 
 	struct WLAN_CFG_ENTRY *prWlanCfgEntry;
@@ -9648,6 +9663,15 @@ void wlanFeatureToFw(struct ADAPTER *prAdapter, uint32_t u4Flag)
 		prWlanCfgEntry = wlanCfgGetEntryByIndex(prAdapter, i, u4Flag);
 
 		if (prWlanCfgEntry) {
+
+			if (pucKey != NULL) {
+				if (kalStrnCmp(pucKey, prWlanCfgEntry->aucKey,
+					MAX_CMD_NAME_MAX_LENGTH) != 0)
+					continue;
+
+				if (ucTimes != 0)
+					break;
+			}
 
 			rCmd_v1.itemType = ITEM_TYPE_STR;
 

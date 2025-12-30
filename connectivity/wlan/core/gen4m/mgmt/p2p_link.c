@@ -539,15 +539,12 @@ struct BSS_INFO *p2pGetLinkBssInfo(
 	struct P2P_ROLE_FSM_INFO *prP2pRoleFsmInfo,
 	uint8_t ucLinkIdx)
 {
+#if (CFG_SUPPORT_802_11BE_MLO == 1)
 	struct P2P_ROLE_FSM_INFO *fsm =
 		(struct P2P_ROLE_FSM_INFO *) NULL;
 	uint8_t ucLinkMax;
 
-#if (CFG_SUPPORT_802_11BE_MLO == 1)
 	ucLinkMax = prAdapter->rWifiVar.ucP2pMldLinkMax;
-#else
-	ucLinkMax = 1;
-#endif
 
 	if (!prP2pRoleFsmInfo)
 		return NULL;
@@ -563,6 +560,12 @@ struct BSS_INFO *p2pGetLinkBssInfo(
 	}
 
 	return GET_BSS_INFO_BY_INDEX(prAdapter, fsm->ucBssIndex);
+#else
+	if (!prAdapter || !prP2pRoleFsmInfo)
+		return NULL;
+
+	return GET_BSS_INFO_BY_INDEX(prAdapter, prP2pRoleFsmInfo->ucBssIndex);
+#endif
 }
 
 void p2pGetLinkWmmQueSet(
@@ -654,6 +657,7 @@ struct P2P_CONNECTION_REQ_INFO *p2pGetConnReqInfo(
 	struct P2P_ROLE_FSM_INFO *prP2pRoleFsmInfo,
 	uint8_t ucLinkIdx)
 {
+#if (CFG_SUPPORT_802_11BE_MLO == 1)
 	struct P2P_ROLE_FSM_INFO *fsm =
 		(struct P2P_ROLE_FSM_INFO *) NULL;
 
@@ -668,6 +672,12 @@ struct P2P_CONNECTION_REQ_INFO *p2pGetConnReqInfo(
 	}
 
 	return &(fsm->rConnReqInfo);
+#else
+	if (!prP2pRoleFsmInfo)
+		return NULL;
+
+	return &(prP2pRoleFsmInfo->rConnReqInfo);
+#endif
 }
 
 struct P2P_CHNL_REQ_INFO *p2pGetChnlReqInfo(
@@ -675,6 +685,7 @@ struct P2P_CHNL_REQ_INFO *p2pGetChnlReqInfo(
 	struct P2P_ROLE_FSM_INFO *prP2pRoleFsmInfo,
 	uint8_t ucLinkIdx)
 {
+#if (CFG_SUPPORT_802_11BE_MLO == 1)
 	struct P2P_ROLE_FSM_INFO *fsm =
 		(struct P2P_ROLE_FSM_INFO *) NULL;
 
@@ -689,6 +700,12 @@ struct P2P_CHNL_REQ_INFO *p2pGetChnlReqInfo(
 	}
 
 	return &(fsm->rChnlReqInfo);
+#else
+	if (!prP2pRoleFsmInfo)
+		return NULL;
+
+	return &(prP2pRoleFsmInfo->rChnlReqInfo);
+#endif
 }
 
 void p2pLinkStaRecFree(

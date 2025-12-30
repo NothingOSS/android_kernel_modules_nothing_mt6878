@@ -19541,13 +19541,12 @@ int priv_driver_epcs_send(struct net_device *prNetDev, char *pcCommand,
 	uint8_t *pucType = NULL;
 	uint8_t ucBssIndex = 0;
 
-	if (kalStrnLen(pcCommand, i4TotalLen) > kalStrLen(CMD_EPCS_SEND)) {
-		if (strnicmp(pcCommand + kalStrLen(CMD_EPCS_SEND),
-				" type=", 6) == 0) {
-			pucType = pcCommand + kalStrLen(CMD_EPCS_SEND) + 6;
-			DBGLOG(REQ, INFO,
-				"SEND_EPCS, type=%s\r\n", pucType);
-		}
+	if ((kalStrnLen(pcCommand, i4TotalLen) > kalStrLen(CMD_EPCS_SEND))
+		&& (strnicmp(pcCommand + kalStrLen(CMD_EPCS_SEND),
+		" type=", 6) == 0)) {
+		pucType = pcCommand + kalStrLen(CMD_EPCS_SEND) + 6;
+		DBGLOG(REQ, INFO,
+			"SEND_EPCS, type=%s\r\n", pucType);
 	} else {
 		DBGLOG(REQ, INFO,
 			"wrong format! expected foramt: EPCS_SEND type=3");

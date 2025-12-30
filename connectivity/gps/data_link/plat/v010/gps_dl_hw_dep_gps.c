@@ -82,6 +82,15 @@ void gps_dl_hw_dep_common_clear_wakeup_source(void)
 	/*no need in legacy project*/
 }
 
+void gps_dl_hw_dep_common_dump_after_exit_dpstop_dsleep(void)
+{
+	/*no need in legacy project*/
+}
+
+void gps_dl_hw_dep_common_dump_before_enter_dpstop_dsleep(void)
+{
+	/*no need in legacy project*/
+}
 
 void gps_dl_hw_dep_cfg_dsp_mem(enum dsp_ctrl_enum ctrl)
 {

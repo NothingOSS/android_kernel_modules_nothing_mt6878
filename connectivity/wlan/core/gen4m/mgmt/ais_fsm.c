@@ -3040,6 +3040,10 @@ void aisFsmSteps(struct ADAPTER *prAdapter,
 			prAisFsmInfo->u4SleepInterval =
 			    AIS_BG_SCAN_INTERVAL_MSEC;
 
+#if (CFG_SUPPORT_802_11BE_MLO == 1)
+			prAisFsmInfo->ucMlProbeSendCount = 0;
+#endif
+
 #if (CFG_WOW_SUPPORT == 1)
 			if (prAdapter->fgWowLinkDownPendFlag == TRUE) {
 				prAdapter->fgWowLinkDownPendFlag = FALSE;
@@ -3269,6 +3273,10 @@ send_msg:
 				DISCONNECT_REASON_CODE_RESERVED;
 
 			prConnSettings->u2LinkIdBitmap = 0xFFFF;
+
+#if (CFG_SUPPORT_802_11BE_MLO == 1)
+			prAisFsmInfo->ucMlProbeSendCount = 0;
+#endif
 
 			break;
 
@@ -3878,7 +3886,7 @@ void aisFsmRunEventAbort(struct ADAPTER *prAdapter,
 		struct BSS_DESC *prBssDesc =
 			aisGetTargetBssDesc(prAdapter, ucBssIndex);
 
-		if (!roamingFsmInDecision(prAdapter, ucBssIndex)) {
+		if (!roamingFsmInDecision(prAdapter, TRUE, ucBssIndex)) {
 			DBGLOG(AIS, STATE,
 				"Ignore roaming request if unable to roam\n");
 
@@ -3904,7 +3912,8 @@ void aisFsmRunEventAbort(struct ADAPTER *prAdapter,
 
 		prAisFsmInfo->ucReasonOfDisconnect = ucReasonOfDisconnect;
 		rRoamingData.eReason = ROAMING_REASON_UPPER_LAYER_TRIGGER;
-		rRoamingData.u2Data = prBssDesc->ucRCPI;
+		rRoamingData.u2Data = prBssDesc ?
+			prBssDesc->ucRCPI : RCPI_FOR_DONT_ROAM;
 		rRoamingData.u2RcpiLowThreshold =
 			prRoamingFsmInfo->ucThreshold;
 		rRoamingData.ucBssidx = ucBssIndex;
@@ -7089,9 +7098,9 @@ uint8_t aisBeaconTimeoutFilterPolicy(struct ADAPTER *prAdapter,
 	ais = aisGetAisFsmInfo(prAdapter, ucBssIndex);
 	rssi = prAdapter->rLinkQuality.rLq[ucBssIndex].cRssi;
 #if (CFG_EXT_ROAMING == 1)
-	if (roamingFsmInDecision(prAdapter, ucBssIndex) && rssi > -83)
+	if (roamingFsmInDecision(prAdapter, FALSE, ucBssIndex) && rssi > -83)
 #else
-	if (roamingFsmInDecision(prAdapter, ucBssIndex) && rssi > -70)
+	if (roamingFsmInDecision(prAdapter, FALSE, ucBssIndex) && rssi > -70)
 #endif
 	{
 		/* Good rssi but beacon timeout happened => PER */
@@ -7368,7 +7377,7 @@ uint8_t aisCheckNeedDriverRoaming(
 	/*
 	 * try to select AP only when roaming is enabled and rssi is bad
 	 */
-	if (roamingFsmInDecision(prAdapter, ucBssIndex) &&
+	if (roamingFsmInDecision(prAdapter, FALSE, ucBssIndex) &&
 	    ais->eCurrentState == AIS_STATE_ONLINE_SCAN &&
 	    CHECK_FOR_TIMEOUT(roam->rRoamingDiscoveryUpdateTime,
 		      roam->rRoamingLastDecisionTime,
@@ -7524,13 +7533,18 @@ void aisFsmRoamingDisconnectPrevAP(struct ADAPTER *prAdapter,
 		COPY_MAC_ADDR(prAisBssInfo->aucBSSID, prNewBssDesc->aucBSSID);
 	nicUpdateBss(prAdapter, prAisBssInfo->ucBssIndex);
 
-	secRemoveBssBcEntry(prAdapter, prAisBssInfo, TRUE);
-	if (prTargetStaRec)
+	if (prTargetStaRec) {
+		/* if there's no target, postpone removing bc entry to
+		 * deactivate otherwise deactivate won't sync with fw because
+		 * ucBMCWlanIndex == WTBL_RESERVED_ENTRY
+		 */
+		secRemoveBssBcEntry(prAdapter, prAisBssInfo, TRUE);
 		prTargetStaRec->ucBssIndex = prAisBssInfo->ucBssIndex;
+	}
 	/* before deactivate previous AP, should move its pending MSDUs
 	 ** to the new AP
 	 */
-	if (prAisBssInfo->prStaRecOfAP)
+	if (prAisBssInfo->prStaRecOfAP) {
 		if (prAisBssInfo->prStaRecOfAP != prTargetStaRec &&
 		    prAisBssInfo->prStaRecOfAP->fgIsInUse) {
 			qmMoveStaTxQueue(prAisBssInfo->prStaRecOfAP,
@@ -7546,12 +7560,17 @@ void aisFsmRoamingDisconnectPrevAP(struct ADAPTER *prAdapter,
 #endif
 			cnmStaRecFree(prAdapter, prAisBssInfo->prStaRecOfAP);
 			prAisBssInfo->prStaRecOfAP = NULL;
-		} else
+		} else {
 			DBGLOG(AIS, WARN, "prStaRecOfAP is in use %d\n",
 			       prAisBssInfo->prStaRecOfAP->fgIsInUse);
-	else
+			/* starec is already freed in nicUpdateBss */
+			if (!prAisBssInfo->prStaRecOfAP->fgIsInUse)
+				prAisBssInfo->prStaRecOfAP = NULL;
+		}
+	} else {
 		DBGLOG(AIS, WARN,
 		       "NULL pointer of prAisBssInfo->prStaRecOfAP\n");
+	}
 }				/* end of aisFsmRoamingDisconnectPrevAP() */
 
 void aisFsmRoamingDisconnectPrevAllAP(struct ADAPTER *prAdapter,
@@ -10233,6 +10252,13 @@ static uint32_t aisScanGenMlScanReq(struct ADAPTER *prAdapter,
 		kalMemCopy(prScanReqMsg->aucIEMl, aucIe, u4ScanIELen);
 		prScanReqMsg->u2IELenMl = (uint16_t)u4ScanIELen;
 	}
+
+#if (CFG_SUPPORT_802_11BE_MLO == 1)
+	/* MLO probe should only be sent once
+	 * in one scan process.
+	 */
+	prAisFsmInfo->ucMlProbeEnable = FALSE;
+#endif
 
 	return WLAN_STATUS_SUCCESS;
 }

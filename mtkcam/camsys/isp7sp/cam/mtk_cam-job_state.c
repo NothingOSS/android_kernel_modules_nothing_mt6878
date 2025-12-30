@@ -211,7 +211,7 @@ int loop_each_transition(struct state_table *tbl,
 		if (trans->on_event != event)
 			continue;
 
-		ret = trans->guard ? trans->guard(s_acc, p) : 1;
+		ret = trans->cam_guard ? trans->cam_guard(s_acc, p) : 1;
 		if (ret > 0) {
 			_transit_state(s_acc->s, state_type, state,
 				       trans->dst_state, trans->action,
@@ -222,4 +222,3 @@ int loop_each_transition(struct state_table *tbl,
 
 	return ret;
 }
-

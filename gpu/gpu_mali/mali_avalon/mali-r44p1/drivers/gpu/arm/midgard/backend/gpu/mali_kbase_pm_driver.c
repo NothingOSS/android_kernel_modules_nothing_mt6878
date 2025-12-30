@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 /*
  *
- * (C) COPYRIGHT 2010-2023 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2025 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -1259,6 +1259,8 @@ static void kbase_pm_l2_clear_backend_slot_submit_kctx(struct kbase_device *kbde
 
 static bool can_power_down_l2(struct kbase_device *kbdev)
 {
+	lockdep_assert_held(&kbdev->hwaccess_lock);
+
 #if MALI_USE_CSF
 	/* Due to the HW issue GPU2019-3878, need to prevent L2 power off
 	 * whilst MMU command is in progress.
@@ -2408,7 +2410,10 @@ void kbase_pm_reset_start_locked(struct kbase_device *kbdev)
 #ifdef KBASE_PM_RUNTIME
 		backend->exit_gpu_sleep_mode = true;
 #endif
-		kbdev->csf.firmware_reload_needed = true;
+		if (backend->fw_reload_on_reset_worker == false)
+			kbdev->csf.firmware_reload_needed = true;
+		else
+			kbdev->csf.firmware_reload_needed = false;
 	} else {
 		WARN_ON(backend->mcu_state != KBASE_MCU_OFF);
 	}
@@ -3690,11 +3695,16 @@ static int kbase_pm_do_reset(struct kbase_device *kbdev)
 {
 	struct kbasep_reset_timeout_data rtdata;
 	int ret;
-#if defined(CONFIG_MTK_GPUFREQ_V2) && IS_ENABLED(CONFIG_MALI_MTK_MFG2_BACKDOOR)
+#if defined(CONFIG_MTK_GPUFREQ_V2)
+#if IS_ENABLED(CONFIG_MALI_MTK_MFG2_BACKDOOR)
 	u64 l2_present = kbdev->gpu_props.curr_config.l2_present;
 	u64 l2_trans = 0, l2_ready = 0;
 	int retry_count = 0;
-#endif /* CONFIG_MTK_GPUFREQ_V2 && CONFIG_MALI_MTK_MFG2_BACKDOOR */
+#endif /* CONFIG_MALI_MTK_MFG2_BACKDOOR */
+#if IS_ENABLED(CONFIG_MALI_MTK_POWER_RESET)
+	unsigned long irq_flags = 0;
+#endif /* CONFIG_MALI_MTK_POWER_RESET */
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
 
 	KBASE_KTRACE_ADD(kbdev, CORE_GPU_SOFT_RESET, NULL, 0);
 
@@ -3763,6 +3773,28 @@ static int kbase_pm_do_reset(struct kbase_device *kbdev)
 		mtk_logbuffer_type_print(kbdev, MTK_LOGBUFFER_TYPE_CRITICAL,
 			"GPU soft reset completed\n");
 #endif /* CONFIG_MALI_MTK_LOG_BUFFER */
+
+#if defined(CONFIG_MTK_GPUFREQ_V2) && IS_ENABLED(CONFIG_MALI_MTK_POWER_RESET)
+#if MALI_USE_CSF
+		/* GPU is about to be turned off, switch to dummy page */
+		update_user_reg_page_mapping(kbdev);
+#endif
+		spin_lock_irqsave(&kbdev->hwaccess_lock, irq_flags);
+		/* power off and on once to reset MFG1 */
+		gpufreq_power_control(GPU_PWR_OFF);
+		gpufreq_power_control(GPU_PWR_ON);
+		spin_unlock_irqrestore(&kbdev->hwaccess_lock, irq_flags);
+#if MALI_USE_CSF
+		/* GPU has been turned on, can switch to actual register page */
+		update_user_reg_page_mapping(kbdev);
+#endif
+		dev_info(kbdev->dev, "GPU soft power reset completed");
+#if IS_ENABLED(CONFIG_MALI_MTK_LOG_BUFFER)
+		mtk_logbuffer_type_print(kbdev, MTK_LOGBUFFER_TYPE_CRITICAL,
+			"GPU soft power reset completed\n");
+#endif /* CONFIG_MALI_MTK_LOG_BUFFER */
+#endif /* CONFIG_MTK_GPUFREQ_V2 && CONFIG_MALI_MTK_POWER_RESET */
+
 		return 0;
 	}
 #if IS_ENABLED(CONFIG_MALI_MTK_TIMEOUT_RESET)
@@ -3796,6 +3828,7 @@ static int kbase_pm_do_reset(struct kbase_device *kbdev)
 						kbase_reg_read(kbdev, GPU_CONTROL_REG(GPU_IRQ_STATUS)));
 		mtk_common_debug(MTK_COMMON_DBG_DUMP_PM_STATUS, -1, MTK_DBG_HOOK_PM_RESET_FAIL);
 		mtk_common_debug(MTK_COMMON_DBG_DUMP_INFRA_STATUS, -1, MTK_DBG_HOOK_PM_RESET_FAIL);
+		mtk_common_debug(MTK_COMMON_DBG_DUMP_GIC_STATUS, -1, MTK_DBG_HOOK_RESET_FAIL);
 #endif /* CONFIG_MALI_MTK_DEBUG */
 		/* If interrupts aren't working we can't continue. */
 		destroy_hrtimer_on_stack(&rtdata.timer);
@@ -3854,6 +3887,28 @@ static int kbase_pm_do_reset(struct kbase_device *kbdev)
 			mtk_logbuffer_type_print(kbdev, MTK_LOGBUFFER_TYPE_CRITICAL,
 				"GPU hard reset completed\n");
 #endif /* CONFIG_MALI_MTK_LOG_BUFFER */
+
+#if defined(CONFIG_MTK_GPUFREQ_V2) && IS_ENABLED(CONFIG_MALI_MTK_POWER_RESET)
+#if MALI_USE_CSF
+			/* GPU is about to be turned off, switch to dummy page */
+			update_user_reg_page_mapping(kbdev);
+#endif
+			spin_lock_irqsave(&kbdev->hwaccess_lock, irq_flags);
+			/* power off and on once to reset MFG1 */
+			gpufreq_power_control(GPU_PWR_OFF);
+			gpufreq_power_control(GPU_PWR_ON);
+			spin_unlock_irqrestore(&kbdev->hwaccess_lock, irq_flags);
+#if MALI_USE_CSF
+			/* GPU has been turned on, can switch to actual register page */
+			update_user_reg_page_mapping(kbdev);
+#endif
+			dev_info(kbdev->dev, "GPU hard power reset completed");
+#if IS_ENABLED(CONFIG_MALI_MTK_LOG_BUFFER)
+			mtk_logbuffer_type_print(kbdev, MTK_LOGBUFFER_TYPE_CRITICAL,
+				"GPU hard power reset completed\n");
+#endif /* CONFIG_MALI_MTK_LOG_BUFFER */
+#endif /* CONFIG_MTK_GPUFREQ_V2 && CONFIG_MALI_MTK_POWER_RESET */
+
 			return 0;
 		}
 

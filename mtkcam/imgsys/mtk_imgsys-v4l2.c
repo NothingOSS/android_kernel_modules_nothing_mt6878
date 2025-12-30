@@ -2920,6 +2920,7 @@ int mtk_imgsys_pipe_v4l2_register(struct mtk_imgsys_pipe *pipe,
 	}
 
 	pipe->streaming = 0;
+	pipe->is_snd_alive = 0;
 
 	/* Initialize subdev media entity */
 	pipe->subdev_pads = devm_kcalloc(pipe->imgsys_dev->dev,
@@ -3168,6 +3169,7 @@ static int mtk_imgsys_res_init(struct platform_device *pdev,
 	}
 
 	init_waitqueue_head(&imgsys_dev->flushing_waitq);
+	init_waitqueue_head(&imgsys_dev->shutdown_waitq);
 
 	return 0;
 }
@@ -3586,15 +3588,22 @@ int mtk_imgsys_remove(struct platform_device *pdev)
 }
 EXPORT_SYMBOL(mtk_imgsys_remove);
 
+#define SHUTDOWN_TIMEOUT (10000)
 void mtk_imgsys_shutdown(struct platform_device *pdev)
 {
 	struct mtk_imgsys_dev *imgsys_dev = dev_get_drvdata(&pdev->dev);
     struct mtk_imgsys_pipe *pipe = &imgsys_dev->imgsys_pipe[0];
+	int ret;
 
 	dev_info(imgsys_dev->dev, "%s shutdown +\n", __func__);
-    if (pipe->streaming != 0) {
-        mtk_imgsys_hw_streamoff(pipe);
-    }
+	ret = wait_event_timeout(imgsys_dev->shutdown_waitq, !pipe->streaming,
+				msecs_to_jiffies(SHUTDOWN_TIMEOUT));
+	if (!ret)
+		dev_info(imgsys_dev->dev,
+			"%s: streamoff took over %d secs, ret(%d)\n",
+			__func__, SHUTDOWN_TIMEOUT, ret);
+
+
     dev_info(imgsys_dev->dev, "%s shutdown -\n", __func__);
 }
 EXPORT_SYMBOL(mtk_imgsys_shutdown);

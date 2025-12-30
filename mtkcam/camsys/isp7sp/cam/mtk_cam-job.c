@@ -1864,8 +1864,7 @@ static int apply_engines_cq(struct mtk_cam_job *job,
 
 	mtk_cam_apply_qos(job);
 
-	if (CAM_DEBUG_ENABLED(JOB))
-		dev_info(ctx->cam->dev, "[%s] ctx-%d CQ-0x%x cq_eng 0x%lx used_eng 0x%lx (%s) ts(%llu)\n",
+	dev_info(ctx->cam->dev, "[%s] ctx-%d CQ-0x%x cq_eng 0x%lx used_eng 0x%lx (%s) ts(%llu)\n",
 			__func__, ctx->stream_id, frame_seq_no, cq_engine,
 			used_engine, job->scen_str, ts);
 	return 0;
@@ -3435,6 +3434,7 @@ _common_seamless_after_frame_done(struct mtk_cam_job *job)
 	struct mtk_cam_device *cam = job->src_ctx->cam;
 	int raw_id = get_master_raw_id(job->used_engine);
 	struct mtk_raw_device *raw_dev = NULL;
+	bool is_dc = is_dc_mode(job) ? true : false;
 	int i;
 	int ret = 0;
 
@@ -3458,6 +3458,7 @@ _common_seamless_after_frame_done(struct mtk_cam_job *job)
 		struct mtk_raw_device *r = dev_get_drvdata(ctx->hw_raw[i]);
 
 		reset(r);
+		init_camsys_settings(r, is_dc, ctx->slb_addr ? 1 : 0);
 	}
 
 	set_cq_deadline(job, -1);

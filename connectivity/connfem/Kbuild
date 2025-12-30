@@ -61,6 +61,7 @@ $(MODULE_NAME)-objs += connfem_subsys_bt.o
 $(MODULE_NAME)-objs += connfem_subsys_wifi.o
 $(MODULE_NAME)-objs += connfem_subsys_common.o
 $(MODULE_NAME)-objs += connfem_cfg.o
+$(MODULE_NAME)-objs += connfem_sku.o
 
 INTERNAL_PATH := $(wildcard $(TOP)/vendor/mediatek/internal/connfem_enable)
 

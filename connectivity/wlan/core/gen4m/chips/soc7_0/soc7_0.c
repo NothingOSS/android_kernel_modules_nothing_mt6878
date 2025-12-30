@@ -1963,6 +1963,14 @@ release_wfsys_sem_done:
 	HAL_MCR_WR(prAdapter,
 		AP2WF_CONN_INFRA_ON_CCIF4_AP2WF_PCCIF_ACK_ADDR, value);
 
+	/* Read A-die top_ck_en_1
+	 * Address: 0x18003124
+	 * Action: read
+	 */
+	wf_ioremap_read(CONN_WT_SLP_CTL_REG_WB_SLP_TOP_CK_1_ADDR, &value);
+	DBGLOG(INIT, INFO, "Read A-die top_ck_en_1 (0x%x)\n", value);
+	udelay(50);
+
 	/* Disable A-die top_ck_en_1
 	 * Address: 0x18003124[0]
 	 * Data: 1'b0

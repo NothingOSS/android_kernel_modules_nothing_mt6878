@@ -90,7 +90,7 @@ static struct mtk_raw_device *get_raw_dev(struct mtk_yuv_device *yuv_dev)
 	return dev_get_drvdata(dev);
 }
 
-static void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt, bool is_slb)
+void init_camsys_settings(struct mtk_raw_device *dev, bool is_srt, bool is_slb)
 {
 	struct mtk_cam_device *cam_dev = dev->cam;
 	struct mtk_yuv_device *yuv_dev = get_yuv_dev(dev);
@@ -962,11 +962,15 @@ static void raw_handle_tg_overrun_err(struct mtk_raw_device *raw_dev,
 static void raw_handle_error(struct mtk_raw_device *raw_dev,
 			     struct mtk_camsys_irq_info *data)
 {
+	struct mtk_yuv_device *yuv_dev = get_yuv_dev(raw_dev);
 	int err_status = data->e.err_status;
 	unsigned int fh_cookie = data->frame_idx_inner;
 
-	if (err_status & FBIT(CAMCTL_DMA_ERR_ST))
+	if (err_status & FBIT(CAMCTL_DMA_ERR_ST)) {
+		dump_raw_dma_fbc(raw_dev);
+		dump_yuv_dma_fbc(yuv_dev);
 		raw_handle_dma_err(raw_dev, fh_cookie);
+	}
 
 	if (err_status & FBIT(CAMCTL_TG_GRABERR_ST))
 		raw_handle_tg_grab_err(raw_dev, fh_cookie);

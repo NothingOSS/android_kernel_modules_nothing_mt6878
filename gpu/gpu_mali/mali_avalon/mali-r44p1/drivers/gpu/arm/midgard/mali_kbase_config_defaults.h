@@ -222,7 +222,7 @@ enum {
  *
  * Based on 6000ms timeout at 100MHz, scaled from a 50MHz GPU system.
  */
-#define CSF_FIRMWARE_PING_TIMEOUT_CYCLES (600000000ull)
+#define CSF_FIRMWARE_PING_TIMEOUT_CYCLES (100000000ull)
 
 /* Waiting timeout for a pmode_enter request to be acknowledged, in clock cycles.
  *

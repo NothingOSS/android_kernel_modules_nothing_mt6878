@@ -1440,6 +1440,9 @@ void camsv_handle_err(
 	/* dump camsv debug data */
 	mtk_cam_sv_debug_dump(sv_dev, data->err_tags);
 
+	if (ctx && ctx->seninf)
+		mtk_cam_seninf_dump_current_status(ctx->seninf);
+
 	/* check dma fifo status */
 	if (!(data->err_tags) && (err_status & CAMSVCENTRAL_DMA_SRAM_FULL_ST)) {
 		sv_fifo_full_times += 1;

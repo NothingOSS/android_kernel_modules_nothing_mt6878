@@ -975,8 +975,9 @@ uint32_t TdlsexLinkMgt(struct ADAPTER *prAdapter,
 	}
 #endif
 
-	DBGLOG(TDLS, INFO, "prCmd->ucActionCode=%d, prCmd->ucDialogToken=%d",
-		prCmd->ucActionCode, prCmd->ucDialogToken);
+	DBGLOG(TDLS, INFO,
+	       "ucBssIdx=%d, ucActionCode=%d, ucDialogToken=%d",
+		prCmd->ucBssIdx, prCmd->ucActionCode, prCmd->ucDialogToken);
 
 	prStaRec = prBssInfo->prStaRecOfAP;
 
@@ -1306,9 +1307,9 @@ TdlsDataFrameSend_TearDown(struct ADAPTER *prAdapter,
 	prGlueInfo = (struct GLUE_INFO *) prAdapter->prGlueInfo;
 	prBssInfo = GET_BSS_INFO_BY_INDEX(prAdapter,
 		prStaRec->ucBssIndex);
-	if (prBssInfo == NULL) {
-		DBGLOG(TDLS, ERROR, "prBssInfo %d is NULL!\n"
-			, prStaRec->ucBssIndex);
+	if (prBssInfo == NULL || prBssInfo->prStaRecOfAP == NULL) {
+		DBGLOG(TDLS, ERROR, "prBssInfo or prStaRecOfAP %d is NULL!\n",
+		       prStaRec->ucBssIndex);
 		return 0;
 	}
 

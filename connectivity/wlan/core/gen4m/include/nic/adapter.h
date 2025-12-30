@@ -1256,6 +1256,12 @@ struct WIFI_VAR {
 		};
 	};
 	u_int8_t fgFlushRxReordering;
+
+#if CFG_DEBUG_RX_SEGMENT
+	u_int8_t fgRxSegmentDebugEn;
+	uint32_t u4RxSegmentDebugTimeout;
+#endif /* CFG_DEBUG_RX_SEGMENT */
+
 	uint32_t u4BaShortMissTimeoutMs;
 	uint32_t u4BaIotApMissTimeoutMs;
 	uint32_t u4BaMissTimeoutMs;
@@ -2297,6 +2303,11 @@ struct ADAPTER {
 	struct EVENT_STATISTICS rStatStruct;
 	OS_SYSTIME rStatUpdateTime;
 	u_int8_t fgIsStatValid;
+
+#if CFG_DEBUG_RX_SEGMENT
+	OS_SYSTIME rLastRxSegmentTime;
+	u_int8_t fgDumpRxSegment;
+#endif /* CFG_DEBUG_RX_SEGMENT */
 
 #if CFG_SUPPORT_LLS
 	uint8_t ucLinkStatsBssNum;

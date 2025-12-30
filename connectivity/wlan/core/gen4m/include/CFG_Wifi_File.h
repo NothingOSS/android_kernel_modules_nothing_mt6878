@@ -516,7 +516,7 @@ struct WIFI_NVRAM_TAG_FORMAT {
 #endif
 
 #define MAX_CFG_FILE_WIFI_REC_SIZE    (1024*8)
-#define MAX_CFG_FILE_WIFI_RECAL_SIZE    512
+#define MAX_CFG_FILE_WIFI_RECAL_SIZE    1024
 
 /*******************************************************************************
  *                  F U N C T I O N   D E C L A R A T I O N S

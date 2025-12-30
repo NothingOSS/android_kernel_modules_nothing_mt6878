@@ -399,7 +399,7 @@ void radiotapFillRadiotap(struct ADAPTER *prAdapter,
 	}
 
 	if (ucFillRadiotap == FALSE) {
-		DBGLOG(RX, ERROR, "fill radiotap info fail!\n");
+		DBGLOG(RX, TRACE, "fill radiotap info fail!\n");
 		goto bypass;
 	}
 

@@ -5908,9 +5908,15 @@ static void dump_mipi_error_detect_info(struct seninf_core *core,
 
 	for (i = 0; i < vsync_info->used_csi_port_num; i++) {
 		list_for_each_entry(ctx_, &core->list, list) {
-			if (vsync_info->ctx_port[i] == ctx_->port) {
-				calculate_mipi_error_cnt(core, ctx_, vsync_info->csi_irq_st[i]);
-				dump_current_mipi_error_cnt(core, ctx_, vsync_info);
+			if (ctx_->streaming && ctx_->power_status_flag) {
+				if (vsync_info->ctx_port[i] == ctx_->port) {
+					calculate_mipi_error_cnt(core, ctx_,
+						vsync_info->csi_irq_st[i]);
+					dump_current_mipi_error_cnt(core, ctx_, vsync_info);
+				}
+			} else {
+				pr_info("[%s][ERROR] check streaming/power_status_flag is 0?\n",
+					__func__);
 			}
 		}
 	}

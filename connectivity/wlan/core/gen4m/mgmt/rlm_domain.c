@@ -674,7 +674,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			,	/*CH_SET_UNII_UPPER_149_165 */
 			{125, BAND_NULL, 0, 0, 0, FALSE}
 				/* CH_SET_UNII_UPPER_NA */
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -691,7 +692,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 			,	/* CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -707,7 +709,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{121, BAND_5G, CHNL_SPAN_20, 100, 11, TRUE}
 			,			/* CH_SET_UNII_WW_100_140 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -724,7 +727,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 			,	/* CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -742,7 +746,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			,	/* CH_SET_UNII_WW_132_144 */
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 				/* CH_SET_UNII_UPPER_149_165 */
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -759,7 +764,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 			,	/* CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -776,7 +782,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 			,	/*CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -793,7 +800,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 			,	/*CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -817,7 +825,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 				/* 6G_CH_1_233 */
 #endif
 
-		}
+		},
+		REG_CAT_FCC
 	}
 	,
 	{
@@ -834,7 +843,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_NULL, 0, 0, 0, FALSE}
 			,	/*CH_SET_UNII_UPPER_NA */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -851,7 +861,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_NULL, 0, 0, 0, FALSE}
 			,	/*CH_SET_UNII_UPPER_NA */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -868,7 +879,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_NULL, 0, 0, 0, FALSE}
 			,	/*CH_SET_UNII_UPPER_NA */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -885,7 +897,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 			,	/*CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -909,7 +922,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{136, BAND_6G, CHNL_SPAN_20, 2, 1, FALSE}
 				/* 6G_CH_2*/
 #endif
-		}
+		},
+		REG_CAT_ARIB
 	}
 	,
 	{
@@ -926,7 +940,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 			,	/*CH_SET_UNII_UPPER_149_165 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -942,7 +957,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			,	/*CH_SET_UNII_MID_132_144 */
 			{125, BAND_5G, CHNL_SPAN_20, 149, 5, FALSE}
 				/*CH_SET_UNII_UPPER_149_165 */
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -959,7 +975,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 4, FALSE}
 			,	/*CH_SET_UNII_UPPER_149_161 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -975,7 +992,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			,	/*CH_SET_UNII_MID_100_116 */
 			{125, BAND_NULL, 0, 0, 0, FALSE}
 			,	/*CH_SET_UNII_UPPER_NA */
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -996,7 +1014,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{131, BAND_6G, CHNL_SPAN_20, 1, 24, FALSE}
 				/* 6G_CH_1_93 */
 #endif
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -1017,7 +1036,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			,	/* 6G_CH_1_93 */
 #endif
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -1040,7 +1060,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{136, BAND_6G, CHNL_SPAN_20, 2, 1, FALSE}
 				/* 6G_CH_2*/
 #endif
-		}
+		},
+		REG_CAT_FCC
 	}
 	,
 	{
@@ -1057,7 +1078,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 4, FALSE}
 			,	/* CH_SET_UNII_UPPER_149_161 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -1080,7 +1102,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{136, BAND_6G, CHNL_SPAN_20, 2, 1, FALSE}
 				/* 6G_CH_2*/
 #endif
-		}
+		},
+		REG_CAT_FCC
 	}
 	,
 	{
@@ -1097,7 +1120,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{125, BAND_5G, CHNL_SPAN_20, 149, 8, FALSE}
 			,	/* CH_SET_UNII_UPPER_149_177 */
 			{0, BAND_NULL, 0, 0, 0, FALSE}
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -1120,7 +1144,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{131, BAND_6G, CHNL_SPAN_20, 1, 24, FALSE}
 				/* 6G_CH_1_93 */
 #endif
-		}
+		},
+		REG_CAT_ETSI
 	}
 	,
 	{
@@ -1141,7 +1166,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{131, BAND_6G, CHNL_SPAN_20, 1, 59, FALSE}
 				/* 6G_CH_1_233 */
 #endif
-		}
+		},
+		REG_CAT_FCC
 	}
 	,
 	{
@@ -1164,7 +1190,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{136, BAND_6G, CHNL_SPAN_20, 2, 1, FALSE}
 				/* 6G_CH_2 */
 #endif
-		}
+		},
+		REG_CAT_FCC
 	}
 	,
 	{
@@ -1187,7 +1214,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{136, BAND_6G, CHNL_SPAN_20, 2, 1, FALSE}
 				/* 6G_CH_2 */
 #endif
-		}
+		},
+		REG_CAT_FCC
 	}
 	,
 	{
@@ -1211,7 +1239,8 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 			{136, BAND_6G, CHNL_SPAN_20, 2, 1, FALSE}
 				/* 6G_CH_2 */
 #endif
-		}
+		},
+		REG_CAT_NULL
 	}
 };
 
@@ -1301,44 +1330,68 @@ struct SUBBAND_CHANNEL g_rRlmSubBand[] = {
 };
 #endif
 
-#if CFG_CH_SELECT_ENHANCEMENT
+/* group for countries that marked channel 36~64 as indoor channel */
 static const uint16_t g_u2IndoorType0[] = {
-	COUNTRY_CODE_GG, COUNTRY_CODE_GP, COUNTRY_CODE_GR, COUNTRY_CODE_ZA,
-	COUNTRY_CODE_NL, COUNTRY_CODE_NF, COUNTRY_CODE_DK, COUNTRY_CODE_DE,
-	COUNTRY_CODE_LV, COUNTRY_CODE_RU, COUNTRY_CODE_LB, COUNTRY_CODE_RE,
-	COUNTRY_CODE_RO, COUNTRY_CODE_LU, COUNTRY_CODE_RW, COUNTRY_CODE_LT,
-	COUNTRY_CODE_LI, COUNTRY_CODE_MQ, COUNTRY_CODE_YT, COUNTRY_CODE_MK,
-	COUNTRY_CODE_IM, COUNTRY_CODE_MC, COUNTRY_CODE_MA, COUNTRY_CODE_MU,
-	COUNTRY_CODE_MR, COUNTRY_CODE_ME, COUNTRY_CODE_MD, COUNTRY_CODE_MV,
-	COUNTRY_CODE_MT, COUNTRY_CODE_MN, COUNTRY_CODE_BH, COUNTRY_CODE_VA,
-	COUNTRY_CODE_BE, COUNTRY_CODE_BY, COUNTRY_CODE_BA, COUNTRY_CODE_BG,
-	COUNTRY_CODE_BR, COUNTRY_CODE_SA, COUNTRY_CODE_SM, COUNTRY_CODE_ST,
-	COUNTRY_CODE_PM, COUNTRY_CODE_RS, COUNTRY_CODE_SZ, COUNTRY_CODE_SE,
-	COUNTRY_CODE_CH, COUNTRY_CODE_ES, COUNTRY_CODE_SK, COUNTRY_CODE_SI,
-	COUNTRY_CODE_AE, COUNTRY_CODE_IS, COUNTRY_CODE_IE, COUNTRY_CODE_AZ,
-	COUNTRY_CODE_AD, COUNTRY_CODE_AL, COUNTRY_CODE_EE, COUNTRY_CODE_EC,
-	COUNTRY_CODE_GB, COUNTRY_CODE_OM, COUNTRY_CODE_AU, COUNTRY_CODE_AT,
+	COUNTRY_CODE_GG, COUNTRY_CODE_GP, COUNTRY_CODE_GR, COUNTRY_CODE_GL,
+	COUNTRY_CODE_ZA, COUNTRY_CODE_NL, COUNTRY_CODE_NO, COUNTRY_CODE_NF,
+	COUNTRY_CODE_DK, COUNTRY_CODE_DE, COUNTRY_CODE_LV, COUNTRY_CODE_RU,
+	COUNTRY_CODE_LB, COUNTRY_CODE_RE, COUNTRY_CODE_RO, COUNTRY_CODE_LU,
+	COUNTRY_CODE_RW, COUNTRY_CODE_LT, COUNTRY_CODE_LI, COUNTRY_CODE_MQ,
+	COUNTRY_CODE_YT, COUNTRY_CODE_MK, COUNTRY_CODE_IM, COUNTRY_CODE_MC,
+	COUNTRY_CODE_MA, COUNTRY_CODE_MU, COUNTRY_CODE_MR, COUNTRY_CODE_ME,
+	COUNTRY_CODE_MD, COUNTRY_CODE_MV, COUNTRY_CODE_MT, COUNTRY_CODE_MN,
+	COUNTRY_CODE_BH, COUNTRY_CODE_VA, COUNTRY_CODE_BE, COUNTRY_CODE_BY,
+	COUNTRY_CODE_BA, COUNTRY_CODE_BG, COUNTRY_CODE_BR, COUNTRY_CODE_SA,
+	COUNTRY_CODE_SM, COUNTRY_CODE_ST, COUNTRY_CODE_PM, COUNTRY_CODE_RS,
+	COUNTRY_CODE_SZ, COUNTRY_CODE_SE, COUNTRY_CODE_CH, COUNTRY_CODE_ES,
+	COUNTRY_CODE_SK, COUNTRY_CODE_SI, COUNTRY_CODE_AE, COUNTRY_CODE_IS,
+	COUNTRY_CODE_IE, COUNTRY_CODE_AZ, COUNTRY_CODE_AD, COUNTRY_CODE_AL,
+	COUNTRY_CODE_EE, COUNTRY_CODE_EC, COUNTRY_CODE_GB, COUNTRY_CODE_IO,
+	COUNTRY_CODE_OM, COUNTRY_CODE_AU, COUNTRY_CODE_AT, COUNTRY_CODE_WF,
 	COUNTRY_CODE_IL, COUNTRY_CODE_EG, COUNTRY_CODE_IT, COUNTRY_CODE_ID,
 	COUNTRY_CODE_JP, COUNTRY_CODE_JE, COUNTRY_CODE_GE, COUNTRY_CODE_CN,
-	COUNTRY_CODE_GI, COUNTRY_CODE_CA, COUNTRY_CODE_KZ, COUNTRY_CODE_QA,
-	COUNTRY_CODE_KE, COUNTRY_CODE_KW, COUNTRY_CODE_HR, COUNTRY_CODE_CX,
-	COUNTRY_CODE_CY, COUNTRY_CODE_TH, COUNTRY_CODE_TJ, COUNTRY_CODE_TR,
-	COUNTRY_CODE_TM, COUNTRY_CODE_PS, COUNTRY_CODE_FO, COUNTRY_CODE_PT,
-	COUNTRY_CODE_PL, COUNTRY_CODE_FR, COUNTRY_CODE_GF, COUNTRY_CODE_TF,
-	COUNTRY_CODE_PF, COUNTRY_CODE_FI, COUNTRY_CODE_PN, COUNTRY_CODE_HU,
-	COUNTRY_CODE_HK, COUNTRY_CODE_NO
+	COUNTRY_CODE_GI, COUNTRY_CODE_CZ, COUNTRY_CODE_KZ, COUNTRY_CODE_QA,
+	COUNTRY_CODE_KE, COUNTRY_CODE_CC, COUNTRY_CODE_KW, COUNTRY_CODE_HR,
+	COUNTRY_CODE_CX, COUNTRY_CODE_CY, COUNTRY_CODE_TH, COUNTRY_CODE_TJ,
+	COUNTRY_CODE_TR, COUNTRY_CODE_TM, COUNTRY_CODE_PS, COUNTRY_CODE_FO,
+	COUNTRY_CODE_PT, COUNTRY_CODE_PL, COUNTRY_CODE_FR, COUNTRY_CODE_GF,
+	COUNTRY_CODE_TF, COUNTRY_CODE_PF, COUNTRY_CODE_FI, COUNTRY_CODE_PN,
+	COUNTRY_CODE_HM, COUNTRY_CODE_HU, COUNTRY_CODE_HK, COUNTRY_CODE_XK,
 };
 
+/* group for countries that marked channel 36~48 as indoor channel */
 static const uint16_t g_u2IndoorType1[] = {
 	COUNTRY_CODE_NP, COUNTRY_CODE_VE, COUNTRY_CODE_VN, COUNTRY_CODE_AR,
 	COUNTRY_CODE_DZ, COUNTRY_CODE_SV, COUNTRY_CODE_UY, COUNTRY_CODE_CL,
 	COUNTRY_CODE_CA, COUNTRY_CODE_PE
 };
 
+/* group for countries that marked channel 100~128 as indoor channel */
 static const uint16_t g_u2IndoorType2[] = {
-	COUNTRY_CODE_KZ, COUNTRY_CODE_QA
+	COUNTRY_CODE_KZ, COUNTRY_CODE_QA, COUNTRY_CODE_MN, COUNTRY_CODE_BY,
 };
-#endif
+
+/* group for countries that marked channel 100~140 as indoor channel */
+static const uint16_t g_u2IndoorType3[] = {
+	COUNTRY_CODE_KZ, COUNTRY_CODE_QA, COUNTRY_CODE_MN, COUNTRY_CODE_BY,
+	COUNTRY_CODE_RU,
+};
+
+/* group for countries that marked channel 100~144 as indoor channel */
+static const uint16_t g_u2IndoorType4[] = {
+	COUNTRY_CODE_KZ, COUNTRY_CODE_QA, COUNTRY_CODE_MN, COUNTRY_CODE_RU,
+};
+
+/* group for countries that marked channel 149~165 as indoor channel */
+static const uint16_t g_u2IndoorType5[] = {
+	COUNTRY_CODE_KZ, COUNTRY_CODE_QA, COUNTRY_CODE_RU,
+};
+
+/* group for countries that marked channel 169~177 as indoor channel */
+static const uint16_t g_u2IndoorType6[] = {
+	COUNTRY_CODE_GU, COUNTRY_CODE_US, COUNTRY_CODE_UM, COUNTRY_CODE_VI,
+	COUNTRY_CODE_MP, COUNTRY_CODE_AS, COUNTRY_CODE_PR,
+};
 
 /*******************************************************************************
  *                           P R I V A T E   D A T A
@@ -1955,8 +2008,8 @@ void rlmDomainSendDomainInfoCmd(struct ADAPTER *prAdapter)
 		prAdapter->rWifiVar.uc2G4BandwidthMode;
 	prCmd->uc5GBandwidth =
 		prAdapter->rWifiVar.uc5GBandwidthMode;
+	prCmd->ucRegCat = (uint8_t)prDomainInfo->eRegCat;
 	prCmd->aucReserved[0] = 0;
-	prCmd->aucReserved[1] = 0;
 
 	for (i = 0; i < MAX_SUBBAND_NUM; i++) {
 		prSubBand = &prDomainInfo->rSubBand[i];
@@ -1981,6 +2034,14 @@ void rlmDomainSendDomainInfoCmd(struct ADAPTER *prAdapter)
 						= prSubBand->ucNumChannels;
 		}
 	}
+
+	DBGLOG(RLM, TRACE,
+	       "Domain: ValidCC=%c%c, PwrLimitCC=%c%c, Reg=%d\n",
+	       (prAdapter->rWifiVar.u2CountryCode & 0xff00) >> 8,
+	       (prAdapter->rWifiVar.u2CountryCode & 0x00ff),
+	       ((prCmd->u2CountryCode & 0xff00) >> 8),
+	       (prCmd->u2CountryCode & 0x00ff),
+	       prCmd->ucRegCat);
 
 	/* Set domain info to chip */
 	wlanSendSetQueryCmd(prAdapter, /* prAdapter */
@@ -2040,7 +2101,6 @@ void rlmDomainSendPassiveScanInfoCmd(struct ADAPTER *prAdapter)
 	prCmd->uc5GBandwidth =
 		prAdapter->rWifiVar.uc5GBandwidthMode;
 	prCmd->aucReserved[0] = 0;
-	prCmd->aucReserved[1] = 0;
 
 	DBGLOG(RLM, TRACE, "u2CountryCode=0x%04x\n",
 	       prAdapter->rWifiVar.u2CountryCode);
@@ -2062,6 +2122,8 @@ void rlmDomainSendPassiveScanInfoCmd(struct ADAPTER *prAdapter)
 	if (i >= REG_DOMAIN_PASSIVE_GROUP_NUM)
 		prDomainInfo = &arSupportedRegDomains_Passive
 					[REG_DOMAIN_PASSIVE_DEF_IDX];
+
+	prCmd->ucRegCat = (uint8_t)prDomainInfo->eRegCat;
 
 	for (i = 0; i < MAX_SUBBAND_NUM; i++) {
 		prSubBand = &prDomainInfo->rSubBand[i];
@@ -2086,6 +2148,12 @@ void rlmDomainSendPassiveScanInfoCmd(struct ADAPTER *prAdapter)
 						prSubBand->ucNumChannels;
 		}
 	}
+
+	/* Get domain info from arSupportedRegDomains
+	 * to set regulatory category
+	 */
+	prDomainInfo = rlmDomainGetDomainInfo(prAdapter);
+	prCmd->ucRegCat = (uint8_t)prDomainInfo->eRegCat;
 
 	/* Set passive scan channel info to chip */
 	wlanSendSetQueryCmd(prAdapter, /* prAdapter */
@@ -2166,7 +2234,6 @@ u_int8_t rlmDomainIsStaSapIndoorConn(struct ADAPTER *prAdapter)
 #endif
 }
 
-#if CFG_CH_SELECT_ENHANCEMENT
 u_int8_t rlmDomainIsIndoorChannel(struct ADAPTER *prAdapter,
 				 enum ENUM_BAND eBand, uint8_t ucChannel)
 {
@@ -2174,26 +2241,58 @@ u_int8_t rlmDomainIsIndoorChannel(struct ADAPTER *prAdapter,
 		uint32_t u4CountryNum = 0;
 		uint8_t i;
 
-		if (ucChannel <= 48) {
-			u4CountryNum = (ARRAY_SIZE(g_u2IndoorType1) / 2);
+		if (ucChannel >= 36 && ucChannel <= 48) {
+			u4CountryNum = ARRAY_SIZE(g_u2IndoorType1);
 			for (i = 0; i < u4CountryNum; i++) {
 				if (g_u2IndoorType1[i] ==
 				prAdapter->rWifiVar.u2CountryCode)
 				return TRUE;
 			}
 		}
-		if (ucChannel <= 64) {
-			u4CountryNum = (ARRAY_SIZE(g_u2IndoorType0) / 2);
+		if (ucChannel >= 36 && ucChannel <= 64) {
+			u4CountryNum = ARRAY_SIZE(g_u2IndoorType0);
 			for (i = 0; i < u4CountryNum; i++) {
 				if (g_u2IndoorType0[i] ==
 				prAdapter->rWifiVar.u2CountryCode)
 				return TRUE;
 			}
 		}
-		if (ucChannel <= 140) {
-			u4CountryNum = (ARRAY_SIZE(g_u2IndoorType2) / 2);
+		if (ucChannel >= 100 && ucChannel <= 128) {
+			u4CountryNum = ARRAY_SIZE(g_u2IndoorType2);
 			for (i = 0; i < u4CountryNum; i++) {
 				if (g_u2IndoorType2[i] ==
+				prAdapter->rWifiVar.u2CountryCode)
+				return TRUE;
+			}
+		}
+		if (ucChannel >= 100 && ucChannel <= 140) {
+			u4CountryNum = ARRAY_SIZE(g_u2IndoorType3);
+			for (i = 0; i < u4CountryNum; i++) {
+				if (g_u2IndoorType3[i] ==
+				prAdapter->rWifiVar.u2CountryCode)
+				return TRUE;
+			}
+		}
+		if (ucChannel >= 100 && ucChannel <= 144) {
+			u4CountryNum = ARRAY_SIZE(g_u2IndoorType4);
+			for (i = 0; i < u4CountryNum; i++) {
+				if (g_u2IndoorType4[i] ==
+				prAdapter->rWifiVar.u2CountryCode)
+				return TRUE;
+			}
+		}
+		if (ucChannel >= 149 && ucChannel <= 165) {
+			u4CountryNum = ARRAY_SIZE(g_u2IndoorType5);
+			for (i = 0; i < u4CountryNum; i++) {
+				if (g_u2IndoorType5[i] ==
+				prAdapter->rWifiVar.u2CountryCode)
+				return TRUE;
+			}
+		}
+		if (ucChannel >= 169 && ucChannel <= 177) {
+			u4CountryNum = ARRAY_SIZE(g_u2IndoorType6);
+			for (i = 0; i < u4CountryNum; i++) {
+				if (g_u2IndoorType6[i] ==
 				prAdapter->rWifiVar.u2CountryCode)
 				return TRUE;
 			}
@@ -2202,7 +2301,6 @@ u_int8_t rlmDomainIsIndoorChannel(struct ADAPTER *prAdapter,
 
 	return FALSE;
 }
-#endif
 
 u_int8_t rlmDomainIsLegalChannel(struct ADAPTER *prAdapter,
 				 enum ENUM_BAND eBand, uint8_t ucChannel)
@@ -4941,6 +5039,12 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 #if (CFG_SUPPORT_PWR_LIMIT_EHT == 1)
 		else if (eType == PWR_LIMIT_TYPE_COMP_11BE_1 ||
 					eType == PWR_LIMIT_TYPE_COMP_11BE_2) {
+
+			if (k >= MAX_CMD_EHT_SUPPORT_CHANNEL_NUM) {
+				DBGLOG(RLM, ERROR, "EHT of MAX CH num");
+				return;
+			}
+
 			prCmdPwrLimtEHT = &prCmd->u.rChPwrLimtEHT[k];
 			ucCentCh = prCmdPwrLimtEHT->ucCentralCh;
 
@@ -5086,6 +5190,12 @@ void rlmDomainBuildCmdByConfigTable(struct ADAPTER *prAdapter,
 					PWR_LIMIT_TYPE_COMP_11BE_6G_1 &&
 					eType <=
 					PWR_LIMIT_TYPE_COMP_11BE_6G_6) {
+
+			if (k >= MAX_CMD_EHT_6G_SUPPORT_CHANNEL_NUM) {
+				DBGLOG(RLM, ERROR, "EHT6G out of MAX CH num");
+				return;
+			}
+
 			prCmdPwrLimtEHT_6G = &prCmd->u.rChPwrLimtEHT_6G[k];
 			ucCentCh = prCmdPwrLimtEHT_6G->ucCentralCh;
 
@@ -9239,6 +9349,11 @@ void rlmDomainShowPwrLimitPerCh(char *message,
 #if (CFG_SUPPORT_PWR_LIMIT_EHT == 1)
 		else if (eType == PWR_LIMIT_TYPE_COMP_11BE_1 ||
 					eType == PWR_LIMIT_TYPE_COMP_11BE_2) {
+			if (i >= MAX_CMD_EHT_SUPPORT_CHANNEL_NUM) {
+				DBGLOG(RLM, ERROR, "out of ETH CH Num\n");
+				return;
+			}
+
 			prPwrLmtEHT = &prCmd->u.rChPwrLimtEHT[i];
 			prcRatePwr = &prPwrLmtEHT->cPwrLimitEHT26L;
 
@@ -9332,6 +9447,11 @@ void rlmDomainShowPwrLimitPerCh(char *message,
 					PWR_LIMIT_TYPE_COMP_11BE_6G_1 &&
 					eType <=
 					PWR_LIMIT_TYPE_COMP_11BE_6G_6) {
+			if (i >= MAX_CMD_EHT_6G_SUPPORT_CHANNEL_NUM) {
+				DBGLOG(RLM, ERROR, "out of ETH 6G CH Num\n");
+				return;
+			}
+
 			prPwrLmtEHT_6G = &prCmd->u.rChPwrLimtEHT_6G[i];
 			prcRatePwr = &prPwrLmtEHT_6G->cPwrLimitEHT26L;
 

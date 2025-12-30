@@ -60,6 +60,8 @@ uint32_t wlanAccessCalibrationEMI(struct ADAPTER *prAdapter,
 	uint32_t u4Status = WLAN_STATUS_FAILURE;
 
 #if CFG_MTK_ANDROID_EMI
+	int32_t ret = 0;
+
 	do {
 		if (backupEMI == TRUE) {
 			if (!pCalEvent) {
@@ -109,9 +111,13 @@ uint32_t wlanAccessCalibrationEMI(struct ADAPTER *prAdapter,
 					gEmiCalNoUseEmiData, backupEMI);
 
 #if (TURN_ON_EMI_BACKUP == 1)
-			emi_mem_read(prAdapter->chip_info,
+			ret = emi_mem_read(prAdapter->chip_info,
 				gEmiCalOffset, gEmiCalResult,
 				gEmiCalSize);
+			if (ret != 0) {
+				DBGLOG(INIT, ERROR, "Read Emi memory failed\n");
+				break;
+			}
 #endif
 			u4Status = WLAN_STATUS_SUCCESS;
 		} else {
@@ -153,7 +159,7 @@ void wlanGetEpaElnaFromNvram(
 	uint32_t *pu4DataLen)
 {
 #define MAX_NVRAM_READY_COUNT 10
-#define MAX_NVRAM_FEM_MAX 512
+#define MAX_NVRAM_FEM_MAX 1024
 
 	/* ePA /eLNA */
 	uint8_t u1TypeID, u1LenLSB, u1LenMSB;

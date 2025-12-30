@@ -493,10 +493,10 @@ static int32_t __download_patch_to_emi(
 	//if ((patch_emi_offset >= emi_start) &&
 	//    (patch_emi_offset + patch_size < emi_start + emi_size)) {
 		remap_addr = ioremap(emi_ap_phy_base + patch_emi_offset, patch_size);
-		BTMTK_INFO("[Patch] emi_ap_phy_base[0x%llu], remap_addr[0x%08x]", emi_ap_phy_base, *remap_addr);
-		BTMTK_INFO("[Patch] patch_emi_offset[0x%08x], patch_size[0x%08x]", patch_emi_offset, patch_size);
 
 		if (remap_addr) {
+			BTMTK_INFO("[Patch] emi_ap_phy_base[0x%llu], remap_addr[0x%08x]", emi_ap_phy_base, *remap_addr);
+			BTMTK_INFO("[Patch] patch_emi_offset[0x%08x], patch_size[0x%08x]", patch_emi_offset, patch_size);
 			memcpy_toio(remap_addr, p_buf, patch_size);
 			iounmap(remap_addr);
 		} else {

@@ -6,4 +6,8 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := fpsgo.ko
 include $(MTK_KERNEL_MODULE)
 
+include $(CLEAR_VARS)
+LOCAL_MODULE := game.ko
+include $(MTK_KERNEL_MODULE)
+
 endif

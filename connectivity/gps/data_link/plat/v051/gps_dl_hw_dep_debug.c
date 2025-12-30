@@ -21,6 +21,7 @@
 #include "gps_dl_hw_atf.h"
 
 const struct gps_dl_hw_host_csr_dump_range g_gps_v05x_host_csr_dump_ranges[] = {
+	{0xC0011700,  8}, /* gps_dma_debug, dma_chx_probe.dma_chx_probe */
 	{0xC0020000,  2}, /* gps_cfg_off_debug, 0x0000_470b */
 	{0xC0020100,  9}, /* gps_rgu_off_debug */
 	{0xC0020200,  1}, /* gps_clkgen_off_debug */

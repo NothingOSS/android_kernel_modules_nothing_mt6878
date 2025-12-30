@@ -2049,6 +2049,36 @@ static void kbase_csf_firmware_reload_worker(struct work_struct *work)
 	kbase_csf_firmware_enable_mcu(kbdev);
 }
 
+void kbase_csf_firmware_reload(struct kbase_device *kbdev)
+{
+	unsigned long flags;
+	int err;
+
+	dev_info(kbdev->dev, "reloading firmware");
+
+	KBASE_TLSTREAM_TL_KBASE_CSFFW_FW_RELOADING(kbdev, kbase_backend_get_cycle_cnt(kbdev));
+
+	/* Reload just the data sections from firmware binary image */
+	err = reload_fw_image(kbdev);
+	if (err) {
+#if IS_ENABLED(CONFIG_MALI_MTK_DEBUG_DUMP)
+		dev_info(kbdev->dev, "Reload of FW had failed, MCU won't be re-enabled !!\n");
+#if IS_ENABLED(CONFIG_MALI_MTK_LOG_BUFFER)
+		mtk_logbuffer_type_print(kbdev, MTK_LOGBUFFER_TYPE_CRITICAL | MTK_LOGBUFFER_TYPE_EXCEPTION,
+			"Reload of FW had failed, MCU won't be re-enabled !!\n");
+#endif /* CONFIG_MALI_MTK_LOG_BUFFER */
+		mtk_common_debug(MTK_COMMON_DBG_DUMP_DB_BY_SETTING, NULL, MTK_DBG_HOOK_FWRELOAD_FAIL);
+#endif /* CONFIG_MALI_MTK_DEBUG_DUMP */
+		return;
+	}
+
+	kbase_csf_tl_reader_reset(&kbdev->timeline->csf_tl_reader);
+
+	err = kbase_csf_firmware_cfg_fw_wa_enable(kbdev);
+	if (WARN_ON(err))
+		return;
+}
+
 void kbase_csf_firmware_trigger_reload(struct kbase_device *kbdev)
 {
 	lockdep_assert_held(&kbdev->hwaccess_lock);

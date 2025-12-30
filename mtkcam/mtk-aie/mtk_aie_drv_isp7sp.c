@@ -21,6 +21,7 @@
 #include "cmdq-sec.h"
 #include "cmdq-sec-iwc-common.h"
 #include "iommu_debug.h"
+#include "clkchk.h"
 
 #include "aie_mp_fw_7sp_def.h"
 #include "mtk_aie-trace.h"
@@ -516,6 +517,8 @@ static void aie_fdvt_dump_reg(struct mtk_aie_dev *fd)
 	}
 
 	aie_dump_cg_reg(fd);
+
+	clkchk_external_dump();
 
 	aie_dev_info(fd->dev, "%s result result1: %x, %x, %x", __func__,
 		 readl(fd->fd_base + AIE_RESULT_0_REG),

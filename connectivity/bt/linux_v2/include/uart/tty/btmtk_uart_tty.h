@@ -201,7 +201,7 @@ struct btmtk_uart_dev {
 
 	/* driver,fw own */
 	bool			no_fw_own;
-	u8			own_state;
+	atomic_t		own_state;
 	struct timer_list	fw_own_timer;
 	atomic_t		fw_own_timer_flag;
 	atomic_t		need_drv_own;

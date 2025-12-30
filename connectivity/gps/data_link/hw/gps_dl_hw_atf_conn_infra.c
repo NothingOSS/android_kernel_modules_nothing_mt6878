@@ -106,17 +106,33 @@ void gps_dl_hw_print_hw_status(enum gps_dl_link_id_enum link_id, bool dump_rf_cr
 #endif
 }
 
+void gps_dl_hw_do_gps_a2z_enable(unsigned int op)
+{
+	struct arm_smccc_res res;
+	int ret;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_GPS_CONTROL, SMC_GPS_SET_A2Z_ENABLE,
+			op, 0, 0, 0, 0, 0, &res);
+	ret = res.a0;
+}
+
 void gps_dl_hw_do_gps_a2z_dump(void)
 {
-#if 0
-	GDL_HW_WR_GPS_REG(0x80073120, 1); /* enable A2Z */
+#if 1
+	gps_dl_hw_do_gps_a2z_enable(1); /* enable A2Z */
+	GDL_HW_RD_GPS_REG(0x80073120);
 	GDL_HW_RD_GPS_REG(0x80072228);
 	GDL_HW_RD_GPS_REG(0x80082228);
+	GDL_HW_RD_GPS_REG(0x80070480);
 	GDL_HW_RD_GPS_REG(0x8007048C);
 	GDL_HW_RD_GPS_REG(0x8008048C);
+	GDL_HW_RD_GPS_REG(0x80070494);
+	GDL_HW_RD_GPS_REG(0x800704B4);
+	GDL_HW_RD_GPS_REG(0x800704B8);
 	GDL_HW_RD_GPS_REG(0x80080680);
 	GDL_HW_RD_GPS_REG(0x800806C0);
 	GDL_HW_RD_GPS_REG(0x80070680);
+	GDL_HW_RD_GPS_REG(0x80070684);
 	GDL_HW_RD_GPS_REG(0x800706C0);
 	GDL_HW_RD_GPS_REG(0x800706C8);
 	GDL_HW_RD_GPS_REG(0x800706CC);
@@ -135,7 +151,25 @@ void gps_dl_hw_do_gps_a2z_dump(void)
 	gps_dl_sleep_us(999, 1001);
 	GDL_HW_RD_GPS_REG(0x800740a0);
 	GDL_HW_RD_GPS_REG(0x800740a4);
-	GDL_HW_WR_GPS_REG(0x80073120, 0);
+	GDL_HW_RD_GPS_REG(0x80070680);
+	GDL_HW_RD_GPS_REG(0x80070684);
+	GDL_HW_RD_GPS_REG(0x800700C4);
+	GDL_HW_RD_GPS_REG(0x800700C8);
+	GDL_HW_RD_GPS_REG(0x800700CC);
+	GDL_HW_RD_GPS_REG(0x800700D0);
+	GDL_HW_RD_GPS_REG(0x80070100);
+	GDL_HW_RD_GPS_REG(0x80070104);
+	GDL_HW_RD_GPS_REG(0x80070108);
+	GDL_HW_RD_GPS_REG(0x8007010C);
+	GDL_HW_RD_GPS_REG(0x80070110);
+	GDL_HW_RD_GPS_REG(0x80070114);
+	GDL_HW_RD_GPS_REG(0x80070118);
+	GDL_HW_RD_GPS_REG(0x8007011C);
+	GDL_HW_RD_GPS_REG(0x80074018);
+	GDL_HW_RD_GPS_REG(0x8007401C);
+	GDL_HW_RD_GPS_REG(0x800740C0);
+	GDL_HW_RD_GPS_REG(0x800740D8);
+	gps_dl_hw_do_gps_a2z_enable(0);
 #endif
 }
 

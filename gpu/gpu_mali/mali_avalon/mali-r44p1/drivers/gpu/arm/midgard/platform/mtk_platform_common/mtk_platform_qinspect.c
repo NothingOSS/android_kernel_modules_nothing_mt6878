@@ -164,7 +164,7 @@ static int mtk_qinspect_cpuq_internal_dump(struct kbase_context *kctx, enum mtk_
 	kbase_event_wakeup(kctx);
 	mutex_unlock(&kctx->csf.cpu_queue.lock);
 
-	timeout = wait_for_completion_timeout(&kctx->csf.cpu_queue.dump_cmp, msecs_to_jiffies(3000));
+	timeout = wait_for_completion_timeout(&kctx->csf.cpu_queue.dump_cmp, msecs_to_jiffies(500));
 
 	mutex_lock(&kctx->csf.cpu_queue.lock);
 	if (kctx->csf.cpu_queue.buffer) {

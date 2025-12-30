@@ -18,6 +18,7 @@ CONFIG_SUPPORT_MULTI_DEV_NODE=n
 BT_CONFIG_TRACING=n
 CONFIG_SUPPORT_UARTDBG=y
 CFG_SUPPORT_HOSTWAKE=n
+CFG_SUPPORT_RHW_DBG_SOP=n
 
 KO_CODE_PATH := $(if $(filter /%,$(src)),,$(srctree)/)$(src)
 
@@ -81,6 +82,12 @@ ifeq ($(CFG_SUPPORT_HOSTWAKE), y)
     ccflags-y += -DCFG_SUPPORT_HOSTWAKE=1
 else
     ccflags-y += -DCFG_SUPPORT_HOSTWAKE=0
+endif
+
+ifeq ($(CFG_SUPPORT_RHW_DBG_SOP), y)
+    ccflags-y += -DCFG_SUPPORT_RHW_DBG_SOP=1
+else
+    ccflags-y += -DCFG_SUPPORT_RHW_DBG_SOP=0
 endif
 
 #################### Configurations ####################

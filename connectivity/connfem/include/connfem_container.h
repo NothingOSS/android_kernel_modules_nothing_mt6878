@@ -17,7 +17,7 @@
 struct cfm_container {
 	unsigned int cnt;
 	unsigned int entry_sz;
-	char buffer[0];
+	char buffer[];
 };
 
 /*******************************************************************************
