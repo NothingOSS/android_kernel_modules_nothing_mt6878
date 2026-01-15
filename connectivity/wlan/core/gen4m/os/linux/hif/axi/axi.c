@@ -94,6 +94,7 @@ const struct of_device_id mtk_axi_of_ids[] = {
  *                            P U B L I C   D A T A
  *******************************************************************************
  */
+extern uint32_t project_check;
 
 /*******************************************************************************
  *                           P R I V A T E   D A T A
@@ -244,6 +245,12 @@ static bool axiCsrIoremap(struct platform_device *pdev)
 		DBGLOG(INIT, TRACE, "use default remap-idx:%u\n", idx);
 	else
 		DBGLOG(INIT, TRACE, "remap-idx:%u\n", idx);
+
+	ret = of_property_read_u32(node, "project-check", &project_check);
+	if (ret < 0)
+		DBGLOG(INIT, INFO, "use default project_check:%u\n", project_check);
+	else
+		DBGLOG(INIT, INFO, "use non default project_check:%u\n", project_check);
 
 	if (of_address_to_resource(node, idx, &res)) {
 		DBGLOG(INIT, ERROR, "WIFI-OF: of_address_to_resource fail\n");

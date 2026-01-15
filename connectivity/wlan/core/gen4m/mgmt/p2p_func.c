@@ -9039,6 +9039,7 @@ p2pFunNotifyChnlSwitch(struct ADAPTER *prAdapter,
 			}
 			/* wait for deauth TX done & switch channel */
 		} else {
+			DBGLOG(P2P, INFO, "notify csadone, policy:%d\n", ePolicy);
 			p2pFunChnlSwitchNotifyDone(prAdapter);
 		}
 		break;

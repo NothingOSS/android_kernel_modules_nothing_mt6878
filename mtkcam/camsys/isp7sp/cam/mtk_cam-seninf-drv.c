@@ -566,8 +566,19 @@ static int seninf_dfs_init(struct seninf_dfs *dfs, struct device *dev)
 
 	dfs->freqs = devm_kzalloc(dev,
 				  sizeof(unsigned long) * dfs->cnt, GFP_KERNEL);
+
+	if (!dfs->freqs){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		dfs->freqs = vmalloc(sizeof(unsigned long) * dfs->cnt);	
+	}
+
 	dfs->volts = devm_kzalloc(dev,
 				  sizeof(unsigned long) * dfs->cnt, GFP_KERNEL);
+
+	if (!dfs->volts){
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		dfs->volts = vmalloc(sizeof(unsigned long) * dfs->cnt);	
+	}
 
 	if (!dfs->freqs || !dfs->volts) {
 		dev_info(dev, "devm_kzalloc failed\n");
@@ -681,6 +692,10 @@ static int seninf_core_pm_runtime_enable(struct seninf_core *core)
 	else if (core->pm_domain_cnt > 1) {
 		core->pm_domain_devs = devm_kcalloc(core->dev, core->pm_domain_cnt,
 					sizeof(*core->pm_domain_devs), GFP_KERNEL);
+		if (!core->pm_domain_devs) {
+		    dev_info(core->dev, "kcalloc memory faill %d", __LINE__);
+		    core->pm_domain_devs = vmalloc(core->pm_domain_cnt*sizeof(*core->pm_domain_devs));
+		}
 		if (!core->pm_domain_devs)
 			return -ENOMEM;
 
