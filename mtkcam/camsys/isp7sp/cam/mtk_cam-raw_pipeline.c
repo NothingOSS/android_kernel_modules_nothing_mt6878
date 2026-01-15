@@ -1036,6 +1036,11 @@ int mtk_raw_hdr_tsfifo_init(struct mtk_raw_pipeline *arr_pipe, int num)
 		pipe->hdr_ts_buffer =
 			devm_kzalloc(dev, pipe->hdr_ts_fifo_size, GFP_KERNEL);
 
+		if (!pipe->hdr_ts_buffer) {
+			dev_info(dev, "kcalloc memory faill %d", __LINE__);
+			pipe->hdr_ts_buffer = vmalloc(pipe->hdr_ts_fifo_size);
+		}
+
 		if (!pipe->hdr_ts_buffer)
 			return -ENOMEM;
 	}

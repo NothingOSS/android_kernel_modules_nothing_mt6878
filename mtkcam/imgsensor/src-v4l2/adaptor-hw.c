@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (c) 2019 MediaTek Inc.
 
-//#define DEBUG
+#define DEBUG
 
 #include <linux/delay.h>
 #include <linux/module.h>
@@ -69,14 +69,7 @@ static struct clk *get_clk_by_idx_freq(struct adaptor_ctx *ctx,
 		case 19:
 			return ctx->clk[CLK1_19_2M];
 		case 24:
-#if IMGSENSOR_AOV_EINT_UT
-			return ctx->clk[CLK1_26M];
-#else
-			if (ctx->aov_mclk_ulposc_flag)
-				return ctx->clk[CLK1_26M_ULPOSC];
-			else
 				return ctx->clk[CLK1_24M];
-#endif
 		case 26:
 			if (ctx->aov_mclk_ulposc_flag)
 				return ctx->clk[CLK1_26M_ULPOSC];
@@ -314,7 +307,7 @@ int do_hw_power_on(struct adaptor_ctx *ctx)
 	struct subdrv_ctx *subctx;
 	u64 time_boot_begin = 0;
 
-	adaptor_logd(ctx, "E!\n");
+	adaptor_logd(ctx, "wtdd E!\n");
 	if (!ctx || !(ctx->subdrv)) {
 		pr_info("[%s] ctx might be null!\n", __func__);
 		return -EINVAL;

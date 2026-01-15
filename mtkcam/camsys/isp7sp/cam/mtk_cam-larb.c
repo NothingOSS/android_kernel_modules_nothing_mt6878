@@ -57,6 +57,12 @@ static int mtk_cam_larb_probe(struct platform_device *pdev)
 	int ret;
 
 	larb_dev = devm_kzalloc(dev, sizeof(*dev), GFP_KERNEL);
+
+	if (!larb_dev) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		larb_dev = vmalloc(sizeof(*dev));
+	}
+
 	if (!larb_dev)
 		return -ENOMEM;
 	if (dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34)))
@@ -65,6 +71,12 @@ static int mtk_cam_larb_probe(struct platform_device *pdev)
 	if (!dev->dma_parms) {
 		dev->dma_parms =
 			devm_kzalloc(dev, sizeof(*dev->dma_parms), GFP_KERNEL);
+
+		if (!dev->dma_parms) {
+			dev_info(dev, "kcalloc memory faill %d", __LINE__);
+			dev->dma_parms = vmalloc(sizeof(*dev->dma_parms));
+		}
+
 		if (!dev->dma_parms)
 			return -ENOMEM;
 	}

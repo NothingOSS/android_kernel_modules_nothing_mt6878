@@ -553,6 +553,14 @@ struct subdrv_entry {
 	__ret; \
 })
 
+#define subdrv_i2c_rd_u8_u8(subctx, reg) \
+({ \
+	u8 __val = 0xff; \
+	adaptor_i2c_rd_u8_u8(subctx->i2c_client, \
+		subctx->i2c_write_id >> 1, reg, &__val); \
+	__val; \
+})
+
 #define subdrv_i2c_rd_u8(subctx, reg) \
 ({ \
 	u8 __val = 0xff; \
@@ -568,6 +576,10 @@ struct subdrv_entry {
 		subctx->i2c_write_id >> 1, reg, &__val); \
 	__val; \
 })
+
+#define subdrv_i2c_wr_u8_u8(subctx, reg, val) \
+	adaptor_i2c_wr_u8_u8(subctx->i2c_client, \
+		subctx->i2c_write_id >> 1, reg, val)
 
 #define subdrv_i2c_wr_u8(subctx, reg, val) \
 	adaptor_i2c_wr_u8(subctx->i2c_client, \
@@ -588,6 +600,10 @@ struct subdrv_entry {
 #define subdrv_i2c_wr_seq_p8(subctx, reg, p_vals, n_vals) \
 	adaptor_i2c_wr_seq_p8(subctx->i2c_client, \
 		subctx->i2c_write_id >> 1, reg, p_vals, n_vals)
+
+#define subdrv_i2c_wr_regs_u8_u8(subctx, list, len) \
+	adaptor_i2c_wr_regs_u8_u8(subctx->i2c_client, \
+		subctx->i2c_write_id >> 1, list, len)
 
 #define subdrv_i2c_wr_regs_u8(subctx, list, len) \
 	adaptor_i2c_wr_regs_u8(subctx->i2c_client, \

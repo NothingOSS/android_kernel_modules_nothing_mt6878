@@ -40,6 +40,11 @@ static struct subdrv_entry *imgsensor_subdrvs[] = {
 	IMGSENSOR_SUBDRVS
 #endif
 };
+extern char main_camera[32];
+extern char sub_front_camera[32];
+extern char depth_camera[32];
+extern char tele_camera[32];
+extern char micro_camera[32];
 
 module_param(sensor_debug, uint, 0644);
 module_param(set_ctrl_unlock, uint, 0644);
@@ -1452,6 +1457,12 @@ static int imgsensor_probe(struct i2c_client *client)
 	struct device_node *platform_node = NULL;
 
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
+
+	if (!ctx) {
+		dev_info(dev, "kcalloc memory faill %d", __LINE__);
+		ctx = vmalloc(sizeof(*ctx));
+	}
+
 	if (!ctx)
 		return -ENOMEM;
 
@@ -1617,7 +1628,24 @@ static int imgsensor_probe(struct i2c_client *client)
 	}
 
 	notify_fsync_mgr(ctx, 1);
+	if(ctx->idx == 0){
+		sprintf(main_camera, "%s", ctx->subdrv->name);
+	}
 
+	if(ctx->idx == 1){
+		sprintf(sub_front_camera, "%s", ctx->subdrv->name);
+	}
+
+	if(ctx->idx == 2){
+		sprintf(depth_camera, "%s", ctx->subdrv->name);
+	}
+	if(ctx->idx == 3){
+		if(strcmp(ctx->subdrv->name,"gc02m1_mipi_raw") == 0){
+			sprintf(micro_camera, "%s", ctx->subdrv->name);
+		}else {
+			sprintf(tele_camera, "%s", ctx->subdrv->name);
+		}
+	}
 	ret = device_create_file(dev, &dev_attr_debug_i2c_ops);
 	if (ret)
 		dev_info(dev, "failed to create sysfs debug_i2c_ops\n");

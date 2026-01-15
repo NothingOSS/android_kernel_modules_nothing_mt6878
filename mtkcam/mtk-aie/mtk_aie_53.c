@@ -1741,6 +1741,12 @@ static int mtk_aie_probe(struct platform_device *pdev)
 	aie_dev_info(dev, "probe start\n");
 
 	fd = devm_kzalloc(&pdev->dev, sizeof(*fd), GFP_KERNEL);
+
+	if (!fd) {
+		dev_info(&pdev->dev, "kcalloc memory faill %d", __LINE__);
+		fd = vmalloc(sizeof(*fd));
+	}
+
 	if (!fd) {
 		aie_dev_info(dev, "devm_kzalloc fail!\n");
 		return -ENOMEM;
@@ -1765,6 +1771,12 @@ static int mtk_aie_probe(struct platform_device *pdev)
 	if (!dev->dma_parms) {
 		dev->dma_parms =
 			devm_kzalloc(dev, sizeof(*dev->dma_parms), GFP_KERNEL);
+
+		if (!dev->dma_parms) {
+			dev_info(dev, "kcalloc memory faill %d", __LINE__);
+			dev->dma_parms = vmalloc(sizeof(*dev->dma_parms));
+		}
+
 		if (!dev->dma_parms)
 			return -ENOMEM;
 	}
