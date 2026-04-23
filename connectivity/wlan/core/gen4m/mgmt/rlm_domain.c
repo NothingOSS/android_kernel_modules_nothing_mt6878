@@ -421,10 +421,10 @@ static const uint16_t g_u2CountryGroup29[] = {
 	COUNTRY_CODE_US, COUNTRY_CODE_CO, COUNTRY_CODE_PA
 };
 static const uint16_t g_u2CountryGroup30[] = {
-	COUNTRY_CODE_IN
+	COUNTRY_CODE_IN, COUNTRY_CODE_BR
 };
 static const uint16_t g_u2CountryGroup31[] = {
-	COUNTRY_CODE_KR, COUNTRY_CODE_BR
+	COUNTRY_CODE_KR
 };
 // for EU
 static const uint16_t g_u2CountryGroup32[] = {
@@ -1280,7 +1280,7 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 	}
 	,
 	{
-		// for India
+		// for India and Brazil
 		(uint16_t *) g_u2CountryGroup30, sizeof(g_u2CountryGroup30) / 2,
 		{
 			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
@@ -1298,7 +1298,7 @@ struct DOMAIN_INFO_ENTRY arSupportedRegDomains[] = {
 	}
 	,
 	{
-		// for Brazil ~ 6
+		// for KR
 		(uint16_t *) g_u2CountryGroup31, sizeof(g_u2CountryGroup31) / 2,
 		{
 			{81, BAND_2G4, CHNL_SPAN_5, 1, 13, FALSE}
