@@ -7,6 +7,7 @@
 #include <trace/events/sched.h>
 #include <linux/module.h>
 #include <linux/version.h>
+#include <linux/interrupt.h>
 #include <trace/events/irq.h>
 #include <trace/events/power.h>
 
