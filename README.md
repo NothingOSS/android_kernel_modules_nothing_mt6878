@@ -8,3 +8,6 @@
 2. OS 4.0 (Galaga-B4.0-260226-1122)
   - Improve wifi
 
+3. OS 4.1 (Galaga-B4.1-260415-1710)
+  - Improve wifi
+
