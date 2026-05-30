@@ -8,3 +8,6 @@
 2. OS 4.0 (Tetris-B4.0-260225-1904)
   - Improve wifi
 
+3. OS 4.1 (Tetris-B4.1-260415-1709)
+  - Improve wifi
+
