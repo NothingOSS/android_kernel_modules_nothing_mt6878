@@ -11,3 +11,7 @@
 3. OS 4.1 (Galaga-B4.1-260415-1710)
   - Improve wifi
 
+4. OS 4.1 (Galaga-B4.1-260615-1653)
+  - Improve wifi
+  - Fix build error for updating GKI to android14-6.1-2026-03_r9
+
