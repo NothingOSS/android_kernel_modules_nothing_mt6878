@@ -15,3 +15,6 @@
   - Improve wifi
   - Fix build error for updating GKI to android14-6.1-2026-03_r9
 
+5. OS 4.1 (Galaxian-B4.1-260819-1839)
+  - Improve wifi
+
